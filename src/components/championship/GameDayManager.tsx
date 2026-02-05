@@ -98,7 +98,21 @@ const GameDayManager = ({
     setIsManageTeamsOpen(true);
   };
 
+  // Check if team is in another game day
+  const getTeamGameDay = (teamId: string): GameDay | undefined => {
+    return gameDays.find(g => 
+      g.id !== selectedGameDay?.id && g.teamIds.includes(teamId)
+    );
+  };
+
   const toggleTeamInGameDay = (teamId: string) => {
+    // Check if team is in another day
+    const otherDay = getTeamGameDay(teamId);
+    if (otherDay && !localSelectedTeams.has(teamId)) {
+      toast.error(`Este time já está no dia "${otherDay.name}". Remova-o de lá primeiro.`);
+      return;
+    }
+
     setLocalSelectedTeams(prev => {
       const newSet = new Set(prev);
       if (newSet.has(teamId)) {
@@ -115,22 +129,41 @@ const GameDayManager = ({
 
     const currentTeamIds = new Set(gameDays.find(g => g.id === selectedGameDay.id)?.teamIds || []);
     
-    // Remove teams that were unchecked
+    // Collect all teams to add/remove
+    const teamsToRemove: string[] = [];
+    const teamsToAdd: string[] = [];
+
+    // Find teams that were unchecked
     currentTeamIds.forEach(teamId => {
       if (!localSelectedTeams.has(teamId)) {
-        onRemoveTeamFromGameDay(selectedGameDay.id, teamId);
+        teamsToRemove.push(teamId);
       }
     });
 
-    // Add teams that were checked
+    // Find teams that were checked
     localSelectedTeams.forEach(teamId => {
       if (!currentTeamIds.has(teamId)) {
-        onAddTeamToGameDay(selectedGameDay.id, teamId);
+        teamsToAdd.push(teamId);
       }
+    });
+
+    // Remove all unchecked teams
+    teamsToRemove.forEach(teamId => {
+      onRemoveTeamFromGameDay(selectedGameDay.id, teamId);
+    });
+
+    // Add all checked teams
+    teamsToAdd.forEach(teamId => {
+      onAddTeamToGameDay(selectedGameDay.id, teamId);
     });
 
     setIsManageTeamsOpen(false);
-    toast.success('Times atualizados!');
+    const totalChanges = teamsToRemove.length + teamsToAdd.length;
+    if (totalChanges > 0) {
+      toast.success(`${teamsToAdd.length} time(s) adicionado(s), ${teamsToRemove.length} removido(s)!`);
+    } else {
+      toast.info('Nenhuma alteração realizada.');
+    }
   };
 
   const getGameDayTeams = (gameDayId: string) => {
@@ -378,21 +411,26 @@ const GameDayManager = ({
             ) : (
               allTeams.map(team => {
                 const isInGameDay = localSelectedTeams.has(team.id);
+                const otherDay = getTeamGameDay(team.id);
+                const isDisabled = !!otherDay && !isInGameDay;
 
                 return (
                   <div
                     key={team.id}
-                    className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                      isInGameDay 
-                        ? 'bg-primary/10 border-primary/30' 
-                        : 'hover:bg-muted/50 border-border'
+                    className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
+                      isDisabled 
+                        ? 'opacity-50 cursor-not-allowed bg-muted/30 border-border'
+                        : isInGameDay 
+                          ? 'bg-primary/10 border-primary/30 cursor-pointer' 
+                          : 'hover:bg-muted/50 border-border cursor-pointer'
                     }`}
-                    onClick={() => toggleTeamInGameDay(team.id)}
+                    onClick={() => !isDisabled && toggleTeamInGameDay(team.id)}
                   >
                     <Checkbox 
                       checked={isInGameDay}
-                      onCheckedChange={() => toggleTeamInGameDay(team.id)}
+                      onCheckedChange={() => !isDisabled && toggleTeamInGameDay(team.id)}
                       className="pointer-events-none"
+                      disabled={isDisabled}
                     />
                     {team.logo ? (
                       <img src={team.logo} alt={team.name} className="h-8 w-8 rounded-lg object-cover" />
@@ -401,7 +439,12 @@ const GameDayManager = ({
                         {team.name.charAt(0)}
                       </div>
                     )}
-                    <span className="font-medium">{team.name}</span>
+                    <div className="flex-1">
+                      <span className="font-medium">{team.name}</span>
+                      {otherDay && !isInGameDay && (
+                        <p className="text-xs text-muted-foreground">Já está no {otherDay.name}</p>
+                      )}
+                    </div>
                   </div>
                 );
               })

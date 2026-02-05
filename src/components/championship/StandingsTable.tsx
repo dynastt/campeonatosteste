@@ -2,8 +2,10 @@ import { TeamStats } from '@/types/championship';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, Trophy, Medal, Download } from 'lucide-react';
+import { AlertTriangle, Trophy, Medal, Download, FileText } from 'lucide-react';
 import { toast } from 'sonner';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface StandingsTableProps {
   standings: TeamStats[];
@@ -20,46 +22,86 @@ const StandingsTable = ({ standings, title = 'Classificação', showExport = tru
     );
   }
 
-  const handleExport = () => {
-    // Create CSV content
-    const headers = ['Pos', 'Time', 'P', 'J', 'V', 'E', 'D', 'GP', 'GC', 'SG'];
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    
+    // Title
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text(title, 14, 20);
+    
+    // Date
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, 14, 28);
+    
+    // Table data
+    const headers = [['#', 'Time', 'P', 'J', 'V', 'E', 'D', 'GP', 'GC', 'SG']];
     const rows = standings.map((stat, index) => [
-      index + 1,
-      stat.team.name,
-      stat.points,
-      stat.played,
-      stat.won,
-      stat.drawn,
-      stat.lost,
-      stat.goalsFor,
-      stat.goalsAgainst,
-      stat.goalDifference
+      (index + 1).toString(),
+      stat.team.name + (stat.gaveWO ? ' (W.O.)' : ''),
+      stat.points.toString(),
+      stat.played.toString(),
+      stat.won.toString(),
+      stat.drawn.toString(),
+      stat.lost.toString(),
+      stat.goalsFor.toString(),
+      stat.goalsAgainst.toString(),
+      (stat.goalDifference > 0 ? '+' : '') + stat.goalDifference.toString()
     ]);
 
-    const csvContent = [
-      title,
-      '',
-      headers.join(','),
-      ...rows.map(row => row.join(','))
-    ].join('\n');
-
-    // Create and download file
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `${title.toLowerCase().replace(/\s+/g, '-')}.csv`;
-    link.click();
+    autoTable(doc, {
+      head: headers,
+      body: rows,
+      startY: 35,
+      theme: 'striped',
+      headStyles: {
+        fillColor: [34, 197, 94],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        halign: 'center',
+      },
+      columnStyles: {
+        0: { halign: 'center', cellWidth: 10 },
+        1: { halign: 'left', cellWidth: 50 },
+        2: { halign: 'center', cellWidth: 15, fontStyle: 'bold' },
+        3: { halign: 'center', cellWidth: 15 },
+        4: { halign: 'center', cellWidth: 15 },
+        5: { halign: 'center', cellWidth: 15 },
+        6: { halign: 'center', cellWidth: 15 },
+        7: { halign: 'center', cellWidth: 15 },
+        8: { halign: 'center', cellWidth: 15 },
+        9: { halign: 'center', cellWidth: 15 },
+      },
+      styles: {
+        fontSize: 9,
+        cellPadding: 3,
+      },
+      alternateRowStyles: {
+        fillColor: [245, 245, 245],
+      },
+    });
     
-    toast.success('Classificação exportada com sucesso!');
+    // Legend
+    const finalY = (doc as any).lastAutoTable.finalY || 100;
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Legenda: P = Pontos, J = Jogos, V = Vitórias, E = Empates, D = Derrotas, GP = Gols Pró, GC = Gols Contra, SG = Saldo de Gols', 14, finalY + 10);
+    doc.text('Critérios de desempate: 1º Vitórias, 2º Não ter dado W.O., 3º Menos gols sofridos, 4º Saldo de gols, 5º Confronto direto', 14, finalY + 16);
+    
+    // Download
+    doc.save(`${title.toLowerCase().replace(/\s+/g, '-')}.pdf`);
+    
+    toast.success('Classificação exportada em PDF!');
   };
 
   return (
     <div className="space-y-4">
       {showExport && (
         <div className="flex justify-end">
-          <Button variant="outline" size="sm" className="gap-2" onClick={handleExport}>
-            <Download className="h-4 w-4" />
-            Exportar CSV
+          <Button variant="outline" size="sm" className="gap-2" onClick={handleExportPDF}>
+            <FileText className="h-4 w-4" />
+            Exportar PDF
           </Button>
         </div>
       )}
@@ -83,15 +125,7 @@ const StandingsTable = ({ standings, title = 'Classificação', showExport = tru
           </TableHeader>
           <TableBody>
             {standings.map((stat, index) => (
-              <TableRow
-                key={stat.teamId}
-                className={`
-                  transition-colors
-                  ${index === 0 ? 'bg-primary/5 hover:bg-primary/10' : ''}
-                  ${index === 1 ? 'bg-primary/3 hover:bg-primary/8' : ''}
-                  ${index === 2 ? 'bg-primary/2 hover:bg-primary/6' : ''}
-                `}
-              >
+              <TableRow key={stat.teamId} className="transition-colors hover:bg-muted/50">
                 <TableCell className="text-center">
                   {index === 0 && (
                     <div className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-gradient-accent shadow-sm">
@@ -134,9 +168,9 @@ const StandingsTable = ({ standings, title = 'Classificação', showExport = tru
                 </TableCell>
                 <TableCell className="text-center font-bold text-primary text-lg">{stat.points}</TableCell>
                 <TableCell className="text-center hidden sm:table-cell">{stat.played}</TableCell>
-                <TableCell className="text-center text-green-600 dark:text-green-400 hidden sm:table-cell">{stat.won}</TableCell>
+                <TableCell className="text-center hidden sm:table-cell">{stat.won}</TableCell>
                 <TableCell className="text-center text-muted-foreground hidden sm:table-cell">{stat.drawn}</TableCell>
-                <TableCell className="text-center text-red-600 dark:text-red-400 hidden sm:table-cell">{stat.lost}</TableCell>
+                <TableCell className="text-center hidden sm:table-cell">{stat.lost}</TableCell>
                 <TableCell className="text-center hidden md:table-cell">{stat.goalsFor}</TableCell>
                 <TableCell className="text-center hidden md:table-cell">{stat.goalsAgainst}</TableCell>
                 <TableCell className={`text-center font-medium ${stat.goalDifference > 0 ? 'text-green-600 dark:text-green-400' : stat.goalDifference < 0 ? 'text-red-600 dark:text-red-400' : ''}`}>
