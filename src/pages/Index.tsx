@@ -1,15 +1,24 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useChampionships } from '@/hooks/useChampionships';
+import { KnockoutPhase } from '@/types/championship';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Trophy, Plus, Calendar, Users, Pencil, Trash2, Sparkles } from 'lucide-react';
+import { Trophy, Plus, Calendar, Users, Pencil, Trash2, Sparkles, Swords } from 'lucide-react';
 import { toast } from 'sonner';
+
+const AVAILABLE_PHASES: { key: KnockoutPhase; label: string }[] = [
+  { key: 'round-of-16', label: 'Oitavas de Final' },
+  { key: 'quarter-finals', label: 'Quartas de Final' },
+  { key: 'semi-finals', label: 'Semifinais' },
+  { key: 'final', label: 'Final' },
+];
 
 const Index = () => {
   const { championships, createChampionship, updateChampionship, deleteChampionship, getChampionshipTeams, getChampionshipMatches } = useChampionships();
@@ -19,7 +28,21 @@ const Index = () => {
     name: '',
     startDate: '',
     description: '',
+    knockoutPhases: ['quarter-finals', 'semi-finals', 'final'] as KnockoutPhase[],
   });
+
+  const togglePhase = (phase: KnockoutPhase) => {
+    setFormData(prev => {
+      const phases = prev.knockoutPhases.includes(phase)
+        ? prev.knockoutPhases.filter(p => p !== phase)
+        : [...prev.knockoutPhases, phase];
+      return { ...prev, knockoutPhases: phases };
+    });
+  };
+
+  const resetForm = () => {
+    setFormData({ name: '', startDate: '', description: '', knockoutPhases: ['quarter-finals', 'semi-finals', 'final'] });
+  };
 
   const handleCreate = () => {
     if (!formData.name.trim()) {
@@ -27,7 +50,7 @@ const Index = () => {
       return;
     }
     createChampionship({ ...formData, gameDays: [] });
-    setFormData({ name: '', startDate: '', description: '' });
+    resetForm();
     setIsCreateOpen(false);
     toast.success('Campeonato criado com sucesso!');
   };
@@ -38,7 +61,7 @@ const Index = () => {
       return;
     }
     updateChampionship(editingChampionship, formData);
-    setFormData({ name: '', startDate: '', description: '' });
+    resetForm();
     setEditingChampionship(null);
     toast.success('Campeonato atualizado com sucesso!');
   };
@@ -53,9 +76,40 @@ const Index = () => {
       name: championship.name,
       startDate: championship.startDate || '',
       description: championship.description || '',
+      knockoutPhases: championship.knockoutPhases || ['quarter-finals', 'semi-finals', 'final'],
     });
     setEditingChampionship(championship.id);
   };
+
+  const PhaseSelector = () => (
+    <div className="grid gap-2">
+      <Label className="flex items-center gap-2">
+        <Swords className="h-4 w-4 text-primary" />
+        Fases Eliminatórias
+      </Label>
+      <p className="text-xs text-muted-foreground mb-1">Selecione quais fases terá no mata-mata</p>
+      <div className="grid grid-cols-2 gap-2">
+        {AVAILABLE_PHASES.map(phase => (
+          <div
+            key={phase.key}
+            className={`flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-all ${
+              formData.knockoutPhases.includes(phase.key)
+                ? 'bg-primary/10 border-primary/30'
+                : 'hover:bg-muted/50 border-border'
+            }`}
+            onClick={() => togglePhase(phase.key)}
+          >
+            <Checkbox
+              checked={formData.knockoutPhases.includes(phase.key)}
+              onCheckedChange={() => togglePhase(phase.key)}
+              className="pointer-events-none"
+            />
+            <span className="text-sm font-medium">{phase.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gradient-hero">
@@ -89,7 +143,7 @@ const Index = () => {
                   <span>Novo Campeonato</span>
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
+              <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle className="flex items-center gap-2">
                     <Trophy className="h-5 w-5 text-primary" />
@@ -131,6 +185,7 @@ const Index = () => {
                       rows={3}
                     />
                   </div>
+                  <PhaseSelector />
                 </div>
                 <DialogFooter className="gap-2">
                   <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
@@ -193,7 +248,7 @@ const Index = () => {
                           <Pencil className="h-4 w-4" />
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="sm:max-w-md">
+                      <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
                         <DialogHeader>
                           <DialogTitle>Editar Campeonato</DialogTitle>
                           <DialogDescription>
@@ -230,6 +285,7 @@ const Index = () => {
                               rows={3}
                             />
                           </div>
+                          <PhaseSelector />
                         </div>
                         <DialogFooter className="gap-2">
                           <Button variant="outline" onClick={() => setEditingChampionship(null)}>

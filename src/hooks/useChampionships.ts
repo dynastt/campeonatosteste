@@ -19,6 +19,7 @@ export function useChampionships() {
       id: generateId(),
       teamIds: [],
       gameDays: data.gameDays || [],
+      knockoutPhases: data.knockoutPhases || ['quarter-finals', 'semi-finals', 'final'],
       createdAt: new Date().toISOString(),
     };
     setChampionships(prev => [...prev, newChampionship]);
