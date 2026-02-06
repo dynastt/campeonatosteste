@@ -5,6 +5,8 @@ export interface Team {
   createdAt: string;
 }
 
+export type KnockoutPhase = 'round-of-16' | 'quarter-finals' | 'semi-finals' | 'final';
+
 export interface Championship {
   id: string;
   name: string;
@@ -12,6 +14,7 @@ export interface Championship {
   description?: string;
   teamIds: string[];
   gameDays: string[];
+  knockoutPhases: KnockoutPhase[];
   createdAt: string;
 }
 
@@ -46,8 +49,6 @@ export interface Round {
   name?: string;
   createdAt: string;
 }
-
-export type KnockoutPhase = 'round-of-16' | 'quarter-finals' | 'semi-finals' | 'final';
 
 export interface KnockoutMatch {
   id: string;
