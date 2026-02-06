@@ -70,32 +70,23 @@ const ChampionshipDetail = () => {
     return rounds.filter(r => !r.gameDayId).sort((a, b) => a.number - b.number);
   }, [rounds]);
 
-  // Determine the current active knockout phase
+  // Determine the current active knockout phase (most advanced phase WITH matches)
   const currentKnockoutPhase = useMemo(() => {
-    const enabledPhases = championship?.knockoutPhases || [];
-    if (enabledPhases.length === 0) return null;
+    if (knockoutMatches.length === 0) return null;
 
-    const phaseOrder: Record<string, number> = {
-      'round-of-16': 0,
-      'quarter-finals': 1,
-      'semi-finals': 2,
-      'final': 3,
-    };
+    const phaseOrder: KnockoutPhase[] = ['round-of-16', 'quarter-finals', 'semi-finals', 'final'];
 
-    // Sort enabled phases by order
-    const sortedPhases = [...enabledPhases].sort((a, b) => phaseOrder[a] - phaseOrder[b]);
-
-    // Find the latest phase that has matches
-    let latestPhaseWithMatches: string | null = null;
-    for (const phase of sortedPhases) {
+    // Find the most advanced phase that actually has matches created
+    let latestPhaseWithMatches: KnockoutPhase | null = null;
+    for (const phase of phaseOrder) {
       const phaseMatches = knockoutMatches.filter(m => m.phase === phase);
       if (phaseMatches.length > 0) {
         latestPhaseWithMatches = phase;
       }
     }
 
-    return latestPhaseWithMatches || sortedPhases[0];
-  }, [championship, knockoutMatches]);
+    return latestPhaseWithMatches;
+  }, [knockoutMatches]);
 
   // Calculate standings based on the current knockout phase
   const standings = useMemo(() => {
