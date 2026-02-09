@@ -30,6 +30,7 @@ const Index = () => {
     description: '',
     knockoutPhases: ['quarter-finals', 'semi-finals', 'final'] as KnockoutPhase[],
     gameDayNames: ['Sábado', 'Domingo'] as string[],
+    qualifyingTeams: {} as Record<string, number>,
   });
 
   const togglePhase = (phase: KnockoutPhase) => {
@@ -46,12 +47,15 @@ const Index = () => {
       const days = prev.gameDayNames.includes(day)
         ? prev.gameDayNames.filter(d => d !== day)
         : [...prev.gameDayNames, day];
-      return { ...prev, gameDayNames: days };
+      const qt = { ...prev.qualifyingTeams };
+      if (!days.includes(day)) delete qt[day];
+      else if (!qt[day]) qt[day] = 6;
+      return { ...prev, gameDayNames: days, qualifyingTeams: qt };
     });
   };
 
   const resetForm = () => {
-    setFormData({ name: '', startDate: '', description: '', knockoutPhases: ['quarter-finals', 'semi-finals', 'final'], gameDayNames: ['Sábado', 'Domingo'] });
+    setFormData({ name: '', startDate: '', description: '', knockoutPhases: ['quarter-finals', 'semi-finals', 'final'], gameDayNames: ['Sábado', 'Domingo'], qualifyingTeams: { 'Sábado': 6, 'Domingo': 6 } });
   };
 
   const handleCreate = () => {
@@ -64,6 +68,10 @@ const Index = () => {
     formData.gameDayNames.forEach(dayName => {
       createGameDay(championship.id, dayName);
     });
+    // Save qualifying teams config
+    if (Object.keys(formData.qualifyingTeams).length > 0) {
+      updateChampionship(championship.id, { qualifyingTeams: formData.qualifyingTeams });
+    }
     resetForm();
     setIsCreateOpen(false);
     toast.success('Campeonato criado com sucesso!');
@@ -92,6 +100,7 @@ const Index = () => {
       description: championship.description || '',
       knockoutPhases: championship.knockoutPhases || ['quarter-finals', 'semi-finals', 'final'],
       gameDayNames: [],
+      qualifyingTeams: championship.qualifyingTeams || {},
     });
     setEditingChampionship(championship.id);
   };
@@ -129,32 +138,59 @@ const Index = () => {
   );
 
   const GameDaySelector = () => (
-    <div className="grid gap-2">
-      <Label className="flex items-center gap-2">
-        <Calendar className="h-4 w-4 text-primary" />
-        Dias de Jogo
-      </Label>
-      <p className="text-xs text-muted-foreground mb-1">Selecione os dias da semana com jogos</p>
-      <div className="grid grid-cols-2 gap-2">
-        {AVAILABLE_GAME_DAYS.map(day => (
-          <div
-            key={day}
-            className={`flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-all ${
-              formData.gameDayNames.includes(day)
-                ? 'bg-primary/10 border-primary/30'
-                : 'hover:bg-muted/50 border-border'
-            }`}
-            onClick={() => toggleGameDay(day)}
-          >
-            <Checkbox
-              checked={formData.gameDayNames.includes(day)}
-              onCheckedChange={() => toggleGameDay(day)}
-              className="pointer-events-none"
-            />
-            <span className="text-sm font-medium">{day}</span>
-          </div>
-        ))}
+    <div className="grid gap-3">
+      <div className="grid gap-2">
+        <Label className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-primary" />
+          Dias de Jogo
+        </Label>
+        <p className="text-xs text-muted-foreground mb-1">Selecione os dias da semana com jogos</p>
+        <div className="grid grid-cols-2 gap-2">
+          {AVAILABLE_GAME_DAYS.map(day => (
+            <div
+              key={day}
+              className={`flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-all ${
+                formData.gameDayNames.includes(day)
+                  ? 'bg-primary/10 border-primary/30'
+                  : 'hover:bg-muted/50 border-border'
+              }`}
+              onClick={() => toggleGameDay(day)}
+            >
+              <Checkbox
+                checked={formData.gameDayNames.includes(day)}
+                onCheckedChange={() => toggleGameDay(day)}
+                className="pointer-events-none"
+              />
+              <span className="text-sm font-medium">{day}</span>
+            </div>
+          ))}
+        </div>
       </div>
+      {formData.gameDayNames.length > 0 && (
+        <div className="grid gap-2 p-3 rounded-lg border border-border bg-muted/30">
+          <Label className="text-sm font-medium">Quantos times classificam por dia?</Label>
+          <p className="text-xs text-muted-foreground mb-1">Os primeiros colocados ficarão destacados em verde</p>
+          <div className="grid gap-2">
+            {formData.gameDayNames.map(day => (
+              <div key={day} className="flex items-center gap-3">
+                <span className="text-sm font-medium min-w-[80px]">{day}</span>
+                <Input
+                  type="number"
+                  min="1"
+                  value={formData.qualifyingTeams[day] || ''}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    qualifyingTeams: { ...prev.qualifyingTeams, [day]: parseInt(e.target.value) || 0 }
+                  }))}
+                  placeholder="Ex: 6"
+                  className="h-9 w-24"
+                />
+                <span className="text-xs text-muted-foreground">times</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 

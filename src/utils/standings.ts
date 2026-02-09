@@ -18,6 +18,7 @@ export function calculateStandings(teams: Team[], matches: Match[]): TeamStats[]
       goalDifference: 0,
       gaveWO: false,
       woCount: 0,
+      pointsPercentage: 0,
     });
   });
 
@@ -93,6 +94,8 @@ export function calculateStandings(teams: Team[], matches: Match[]): TeamStats[]
   // Calculate goal difference
   statsMap.forEach(stats => {
     stats.goalDifference = stats.goalsFor - stats.goalsAgainst;
+    const maxPoints = stats.played * 3;
+    stats.pointsPercentage = maxPoints > 0 ? (stats.points / maxPoints) * 100 : 0;
   });
 
   // Sort teams based on tiebreaker rules
