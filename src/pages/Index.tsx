@@ -21,7 +21,7 @@ const AVAILABLE_PHASES: { key: KnockoutPhase; label: string }[] = [
 ];
 
 const Index = () => {
-  const { championships, createChampionship, updateChampionship, deleteChampionship, getChampionshipTeams, getChampionshipMatches } = useChampionships();
+  const { championships, createChampionship, updateChampionship, deleteChampionship, getChampionshipTeams, getChampionshipMatches, createGameDay } = useChampionships();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingChampionship, setEditingChampionship] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -29,6 +29,7 @@ const Index = () => {
     startDate: '',
     description: '',
     knockoutPhases: ['quarter-finals', 'semi-finals', 'final'] as KnockoutPhase[],
+    gameDayNames: ['Sábado', 'Domingo'] as string[],
   });
 
   const togglePhase = (phase: KnockoutPhase) => {
@@ -40,8 +41,17 @@ const Index = () => {
     });
   };
 
+  const toggleGameDay = (day: string) => {
+    setFormData(prev => {
+      const days = prev.gameDayNames.includes(day)
+        ? prev.gameDayNames.filter(d => d !== day)
+        : [...prev.gameDayNames, day];
+      return { ...prev, gameDayNames: days };
+    });
+  };
+
   const resetForm = () => {
-    setFormData({ name: '', startDate: '', description: '', knockoutPhases: ['quarter-finals', 'semi-finals', 'final'] });
+    setFormData({ name: '', startDate: '', description: '', knockoutPhases: ['quarter-finals', 'semi-finals', 'final'], gameDayNames: ['Sábado', 'Domingo'] });
   };
 
   const handleCreate = () => {
@@ -49,7 +59,11 @@ const Index = () => {
       toast.error('O nome do campeonato é obrigatório');
       return;
     }
-    createChampionship({ ...formData, gameDays: [] });
+    const championship = createChampionship({ ...formData, gameDays: [] });
+    // Auto-create game days based on selected day names
+    formData.gameDayNames.forEach(dayName => {
+      createGameDay(championship.id, dayName);
+    });
     resetForm();
     setIsCreateOpen(false);
     toast.success('Campeonato criado com sucesso!');
@@ -77,9 +91,12 @@ const Index = () => {
       startDate: championship.startDate || '',
       description: championship.description || '',
       knockoutPhases: championship.knockoutPhases || ['quarter-finals', 'semi-finals', 'final'],
+      gameDayNames: [],
     });
     setEditingChampionship(championship.id);
   };
+
+  const AVAILABLE_GAME_DAYS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
 
   const PhaseSelector = () => (
     <div className="grid gap-2">
@@ -105,6 +122,36 @@ const Index = () => {
               className="pointer-events-none"
             />
             <span className="text-sm font-medium">{phase.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const GameDaySelector = () => (
+    <div className="grid gap-2">
+      <Label className="flex items-center gap-2">
+        <Calendar className="h-4 w-4 text-primary" />
+        Dias de Jogo
+      </Label>
+      <p className="text-xs text-muted-foreground mb-1">Selecione os dias da semana com jogos</p>
+      <div className="grid grid-cols-2 gap-2">
+        {AVAILABLE_GAME_DAYS.map(day => (
+          <div
+            key={day}
+            className={`flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-all ${
+              formData.gameDayNames.includes(day)
+                ? 'bg-primary/10 border-primary/30'
+                : 'hover:bg-muted/50 border-border'
+            }`}
+            onClick={() => toggleGameDay(day)}
+          >
+            <Checkbox
+              checked={formData.gameDayNames.includes(day)}
+              onCheckedChange={() => toggleGameDay(day)}
+              className="pointer-events-none"
+            />
+            <span className="text-sm font-medium">{day}</span>
           </div>
         ))}
       </div>
@@ -186,6 +233,7 @@ const Index = () => {
                     />
                   </div>
                   <PhaseSelector />
+                  <GameDaySelector />
                 </div>
                 <DialogFooter className="gap-2">
                   <Button variant="outline" onClick={() => setIsCreateOpen(false)}>

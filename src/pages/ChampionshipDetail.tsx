@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useChampionships } from '@/hooks/useChampionships';
 import { calculateStandings } from '@/utils/standings';
-import { KnockoutPhase } from '@/types/championship';
+import { KnockoutPhase, Match } from '@/types/championship';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -88,40 +88,49 @@ const ChampionshipDetail = () => {
     return latestPhaseWithMatches;
   }, [knockoutMatches]);
 
-  // Calculate standings based on the current knockout phase
+  // All game day matches combined
+  const allGameDayMatches = useMemo(() => {
+    return matches.filter(m => m.gameDayId);
+  }, [matches]);
+
+  // Calculate overview standings: game day matches + current knockout phase matches
   const standings = useMemo(() => {
-    if (!currentKnockoutPhase || knockoutMatches.length === 0) {
-      // No knockout matches, use general matches
-      return calculateStandings(teams, generalMatches);
+    const allMatches: Match[] = [...allGameDayMatches];
+
+    // Add knockout matches from the current phase if any
+    if (currentKnockoutPhase && knockoutMatches.length > 0) {
+      const phaseMatches = knockoutMatches.filter(m => m.phase === currentKnockoutPhase);
+      const knockoutAsMatches: Match[] = phaseMatches.map(m => ({
+        id: m.id,
+        championshipId: m.championshipId,
+        homeTeamId: m.homeTeamId || '',
+        awayTeamId: m.awayTeamId || '',
+        homeGoals: m.homeGoals,
+        awayGoals: m.awayGoals,
+        homeWO: m.homeWO,
+        awayWO: m.awayWO,
+        round: 0,
+        played: m.homeGoals !== null || m.homeWO || m.awayWO,
+        createdAt: m.createdAt,
+      }));
+      allMatches.push(...knockoutAsMatches);
     }
 
-    // Get teams and matches for the current knockout phase
-    const phaseMatches = knockoutMatches.filter(m => m.phase === currentKnockoutPhase);
+    // Get all teams that participate in these matches
     const teamIds = new Set<string>();
-    phaseMatches.forEach(m => {
+    allMatches.forEach(m => {
       if (m.homeTeamId) teamIds.add(m.homeTeamId);
       if (m.awayTeamId) teamIds.add(m.awayTeamId);
     });
 
-    const phaseTeams = teams.filter(t => teamIds.has(t.id));
+    // If no matches at all, show all teams
+    if (allMatches.length === 0) {
+      return calculateStandings(teams, []);
+    }
 
-    // Convert knockout matches to regular matches for standings
-    const matchesForStandings = phaseMatches.map(m => ({
-      id: m.id,
-      championshipId: m.championshipId,
-      homeTeamId: m.homeTeamId || '',
-      awayTeamId: m.awayTeamId || '',
-      homeGoals: m.homeGoals,
-      awayGoals: m.awayGoals,
-      homeWO: m.homeWO,
-      awayWO: m.awayWO,
-      round: 0,
-      played: m.homeGoals !== null || m.homeWO || m.awayWO,
-      createdAt: m.createdAt,
-    }));
-
-    return calculateStandings(phaseTeams, matchesForStandings);
-  }, [teams, generalMatches, knockoutMatches, currentKnockoutPhase]);
+    const relevantTeams = teams.filter(t => teamIds.has(t.id));
+    return calculateStandings(relevantTeams, allMatches);
+  }, [teams, allGameDayMatches, knockoutMatches, currentKnockoutPhase]);
 
   const playedMatchesCount = matches.filter(m => m.homeGoals !== null && m.awayGoals !== null || m.homeWO || m.awayWO).length;
 
@@ -226,15 +235,12 @@ const ChampionshipDetail = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Trophy className="h-5 w-5 text-primary" />
-                    {currentKnockoutPhase && knockoutMatches.length > 0 
-                      ? `Classificação - ${getPhaseLabel(currentKnockoutPhase)}`
-                      : 'Classificação Geral'
-                    }
+                    Classificação Geral
                   </CardTitle>
                   <CardDescription>
                     {currentKnockoutPhase && knockoutMatches.length > 0
-                      ? `Baseada nas partidas da fase atual (${getPhaseLabel(currentKnockoutPhase)})`
-                      : 'Baseada nas partidas gerais (fora dos dias de jogo)'
+                      ? `Dias de jogo + Eliminatórias (${getPhaseLabel(currentKnockoutPhase)})`
+                      : 'Baseada nas partidas dos dias de jogo'
                     }
                   </CardDescription>
                 </CardHeader>

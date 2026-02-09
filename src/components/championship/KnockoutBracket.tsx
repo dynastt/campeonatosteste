@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react';
-import { KnockoutMatch, KnockoutPhase, Team } from '@/types/championship';
+import { KnockoutMatch, KnockoutPhase, Team, Match } from '@/types/championship';
+import { calculateStandings } from '@/utils/standings';
+import StandingsTable from './StandingsTable';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -248,9 +250,59 @@ const KnockoutBracket = ({
     );
   };
 
+  // Knockout standings - current active phase
+  const knockoutStandings = useMemo(() => {
+    const phaseOrder: KnockoutPhase[] = ['round-of-16', 'quarter-finals', 'semi-finals', 'final'];
+    let latestPhase: KnockoutPhase | null = null;
+    for (const phase of phaseOrder) {
+      if (knockoutMatches.some(m => m.phase === phase)) {
+        latestPhase = phase;
+      }
+    }
+    if (!latestPhase) return { standings: [], phaseLabel: '' };
+
+    const phaseMatches = knockoutMatches.filter(m => m.phase === latestPhase);
+    const teamIds = new Set<string>();
+    phaseMatches.forEach(m => {
+      if (m.homeTeamId) teamIds.add(m.homeTeamId);
+      if (m.awayTeamId) teamIds.add(m.awayTeamId);
+    });
+    const phaseTeams = teams.filter(t => teamIds.has(t.id));
+    const matchesForStandings: Match[] = phaseMatches.map(m => ({
+      id: m.id,
+      championshipId: m.championshipId,
+      homeTeamId: m.homeTeamId || '',
+      awayTeamId: m.awayTeamId || '',
+      homeGoals: m.homeGoals,
+      awayGoals: m.awayGoals,
+      homeWO: m.homeWO,
+      awayWO: m.awayWO,
+      round: 0,
+      played: m.homeGoals !== null || m.homeWO || m.awayWO,
+      createdAt: m.createdAt,
+    }));
+    const label = ALL_PHASES.find(p => p.key === latestPhase)?.label || '';
+    return { standings: calculateStandings(phaseTeams, matchesForStandings), phaseLabel: label };
+  }, [knockoutMatches, teams]);
+
   return (
     <>
       <div className="space-y-6">
+        {/* Knockout Standings */}
+        {knockoutStandings.standings.length > 0 && (
+          <Card className="bg-gradient-card border-border/50">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-primary" />
+                Classificação - {knockoutStandings.phaseLabel}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <StandingsTable standings={knockoutStandings.standings} title={`Classificação - ${knockoutStandings.phaseLabel}`} />
+            </CardContent>
+          </Card>
+        )}
+
         {phases.map((phase) => {
           const phaseMatches = getPhaseMatches(phase.key);
           const count = phase.doubledCount;
