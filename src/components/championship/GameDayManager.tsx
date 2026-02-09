@@ -19,6 +19,7 @@ interface GameDayManagerProps {
   matches: Match[];
   rounds: Round[];
   championshipId: string;
+  qualifyingTeams?: Record<string, number>;
   onCreateGameDay: (name: string) => GameDay;
   onDeleteGameDay: (id: string) => void;
   onAddTeamToGameDay: (gameDayId: string, teamId: string) => void;
@@ -36,6 +37,7 @@ const GameDayManager = ({
   matches,
   rounds,
   championshipId,
+  qualifyingTeams,
   onCreateGameDay,
   onDeleteGameDay,
   onAddTeamToGameDay,
@@ -337,6 +339,7 @@ const GameDayManager = ({
                         standings={standings} 
                         title={`Classificação - ${day.name}`}
                         showExport={true}
+                        qualifyingCount={qualifyingTeams?.[day.name]}
                       />
                     </CardContent>
                   </Card>

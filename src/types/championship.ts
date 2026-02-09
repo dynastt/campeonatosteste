@@ -15,6 +15,8 @@ export interface Championship {
   teamIds: string[];
   gameDays: string[];
   knockoutPhases: KnockoutPhase[];
+  gameDayNames?: string[];
+  qualifyingTeams?: Record<string, number>; // gameDayName -> number of qualifying teams
   createdAt: string;
 }
 
@@ -78,4 +80,5 @@ export interface TeamStats {
   goalDifference: number;
   gaveWO: boolean;
   woCount: number;
+  pointsPercentage: number; // points earned / max possible points (played * 3)
 }

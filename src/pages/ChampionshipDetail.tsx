@@ -6,7 +6,8 @@ import { KnockoutPhase, Match } from '@/types/championship';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Trophy, Users, Calendar, Plus, LayoutGrid, Settings, Swords, Download } from 'lucide-react';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { ArrowLeft, Trophy, Users, Calendar, Plus, LayoutGrid, Settings, Swords, Download, Percent, Hash } from 'lucide-react';
 import StandingsTable from '@/components/championship/StandingsTable';
 import TeamsList from '@/components/championship/TeamsList';
 import RoundsList from '@/components/championship/RoundsList';
@@ -53,6 +54,7 @@ const ChampionshipDetail = () => {
 
   const [isAddTeamOpen, setIsAddTeamOpen] = useState(false);
   const [activeMainTab, setActiveMainTab] = useState<string>('overview');
+  const [standingsMode, setStandingsMode] = useState<string>('points');
 
   const championship = getChampionship(id || '');
   const teams = getChampionshipTeams(id || '');
@@ -233,16 +235,30 @@ const ChampionshipDetail = () => {
               {/* Standings Card */}
               <Card className="bg-gradient-card border-border/50">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Trophy className="h-5 w-5 text-primary" />
-                    Classificação Geral
-                  </CardTitle>
-                  <CardDescription>
-                    {currentKnockoutPhase && knockoutMatches.length > 0
-                      ? `Dias de jogo + Eliminatórias (${getPhaseLabel(currentKnockoutPhase)})`
-                      : 'Baseada nas partidas dos dias de jogo'
-                    }
-                  </CardDescription>
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <Trophy className="h-5 w-5 text-primary" />
+                        Classificação Geral
+                      </CardTitle>
+                      <CardDescription>
+                        {currentKnockoutPhase && knockoutMatches.length > 0
+                          ? `Dias de jogo + Eliminatórias (${getPhaseLabel(currentKnockoutPhase)})`
+                          : 'Baseada nas partidas dos dias de jogo'
+                        }
+                      </CardDescription>
+                    </div>
+                    <ToggleGroup type="single" value={standingsMode} onValueChange={(v) => v && setStandingsMode(v)} size="sm" className="bg-muted/50 rounded-lg p-0.5">
+                      <ToggleGroupItem value="points" aria-label="Pontos" className="gap-1 px-3 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
+                        <Hash className="h-3 w-3" />
+                        P
+                      </ToggleGroupItem>
+                      <ToggleGroupItem value="percentage" aria-label="Porcentagem" className="gap-1 px-3 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
+                        <Percent className="h-3 w-3" />
+                        %
+                      </ToggleGroupItem>
+                    </ToggleGroup>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   {teams.length === 0 ? (
@@ -254,7 +270,12 @@ const ChampionshipDetail = () => {
                       </Button>
                     </div>
                   ) : (
-                    <StandingsTable standings={standings} title={`Classificação - ${championship.name}`} />
+                    <StandingsTable 
+                      standings={standings} 
+                      title={`Classificação - ${championship.name}`}
+                      championshipName={championship.name}
+                      sortByPercentage={standingsMode === 'percentage'}
+                    />
                   )}
                 </CardContent>
               </Card>
@@ -340,6 +361,7 @@ const ChampionshipDetail = () => {
             </div>
             
             <GameDayManager
+              qualifyingTeams={championship.qualifyingTeams}
               gameDays={gameDays}
               allTeams={teams}
               matches={matches}
