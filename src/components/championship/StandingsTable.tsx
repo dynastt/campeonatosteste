@@ -14,9 +14,10 @@ interface StandingsTableProps {
   showExport?: boolean;
   qualifyingCount?: number;
   sortByPercentage?: boolean;
+  showPercentageColumn?: boolean;
 }
 
-const StandingsTable = ({ standings, title = 'Classificação', championshipName, showExport = true, qualifyingCount, sortByPercentage = false }: StandingsTableProps) => {
+const StandingsTable = ({ standings, title = 'Classificação', championshipName, showExport = true, qualifyingCount, sortByPercentage = false, showPercentageColumn = false }: StandingsTableProps) => {
   if (standings.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
@@ -141,6 +142,9 @@ const StandingsTable = ({ standings, title = 'Classificação', championshipName
               <TableHead className="text-center w-14 font-semibold hidden md:table-cell">GP</TableHead>
               <TableHead className="text-center w-14 font-semibold hidden md:table-cell">GC</TableHead>
               <TableHead className="text-center w-14 font-semibold">SG</TableHead>
+              {showPercentageColumn && (
+                <TableHead className="text-center w-16 font-semibold">%</TableHead>
+              )}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -207,6 +211,11 @@ const StandingsTable = ({ standings, title = 'Classificação', championshipName
                   <TableCell className={`text-center font-medium ${stat.goalDifference > 0 ? 'text-green-600 dark:text-green-400' : stat.goalDifference < 0 ? 'text-red-600 dark:text-red-400' : ''}`}>
                     {stat.goalDifference > 0 ? '+' : ''}{stat.goalDifference}
                   </TableCell>
+                  {showPercentageColumn && (
+                    <TableCell className="text-center font-medium text-muted-foreground">
+                      {stat.pointsPercentage.toFixed(0)}%
+                    </TableCell>
+                  )}
                 </TableRow>
               );
             })}
