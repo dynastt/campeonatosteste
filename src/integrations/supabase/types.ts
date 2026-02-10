@@ -14,7 +14,285 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      championships: {
+        Row: {
+          created_at: string
+          description: string | null
+          game_day_names: string[] | null
+          game_days: string[] | null
+          id: string
+          knockout_phases: string[] | null
+          name: string
+          qualifying_teams: Json | null
+          start_date: string | null
+          team_ids: string[] | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          game_day_names?: string[] | null
+          game_days?: string[] | null
+          id?: string
+          knockout_phases?: string[] | null
+          name: string
+          qualifying_teams?: Json | null
+          start_date?: string | null
+          team_ids?: string[] | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          game_day_names?: string[] | null
+          game_days?: string[] | null
+          id?: string
+          knockout_phases?: string[] | null
+          name?: string
+          qualifying_teams?: Json | null
+          start_date?: string | null
+          team_ids?: string[] | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      game_days: {
+        Row: {
+          championship_id: string
+          created_at: string
+          id: string
+          name: string
+          team_ids: string[] | null
+          user_id: string
+        }
+        Insert: {
+          championship_id: string
+          created_at?: string
+          id?: string
+          name: string
+          team_ids?: string[] | null
+          user_id: string
+        }
+        Update: {
+          championship_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          team_ids?: string[] | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_days_championship_id_fkey"
+            columns: ["championship_id"]
+            isOneToOne: false
+            referencedRelation: "championships"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knockout_matches: {
+        Row: {
+          away_goals: number | null
+          away_team_id: string | null
+          away_wo: boolean
+          championship_id: string
+          created_at: string
+          home_goals: number | null
+          home_team_id: string | null
+          home_wo: boolean
+          id: string
+          phase: string
+          position: number
+          user_id: string
+          winner_id: string | null
+        }
+        Insert: {
+          away_goals?: number | null
+          away_team_id?: string | null
+          away_wo?: boolean
+          championship_id: string
+          created_at?: string
+          home_goals?: number | null
+          home_team_id?: string | null
+          home_wo?: boolean
+          id?: string
+          phase: string
+          position: number
+          user_id: string
+          winner_id?: string | null
+        }
+        Update: {
+          away_goals?: number | null
+          away_team_id?: string | null
+          away_wo?: boolean
+          championship_id?: string
+          created_at?: string
+          home_goals?: number | null
+          home_team_id?: string | null
+          home_wo?: boolean
+          id?: string
+          phase?: string
+          position?: number
+          user_id?: string
+          winner_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knockout_matches_championship_id_fkey"
+            columns: ["championship_id"]
+            isOneToOne: false
+            referencedRelation: "championships"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      matches: {
+        Row: {
+          away_goals: number | null
+          away_team_id: string
+          away_wo: boolean
+          championship_id: string
+          created_at: string
+          game_day_id: string | null
+          home_goals: number | null
+          home_team_id: string
+          home_wo: boolean
+          id: string
+          played: boolean
+          round: number
+          user_id: string
+        }
+        Insert: {
+          away_goals?: number | null
+          away_team_id: string
+          away_wo?: boolean
+          championship_id: string
+          created_at?: string
+          game_day_id?: string | null
+          home_goals?: number | null
+          home_team_id: string
+          home_wo?: boolean
+          id?: string
+          played?: boolean
+          round: number
+          user_id: string
+        }
+        Update: {
+          away_goals?: number | null
+          away_team_id?: string
+          away_wo?: boolean
+          championship_id?: string
+          created_at?: string
+          game_day_id?: string | null
+          home_goals?: number | null
+          home_team_id?: string
+          home_wo?: boolean
+          id?: string
+          played?: boolean
+          round?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matches_away_team_id_fkey"
+            columns: ["away_team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_championship_id_fkey"
+            columns: ["championship_id"]
+            isOneToOne: false
+            referencedRelation: "championships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_game_day_id_fkey"
+            columns: ["game_day_id"]
+            isOneToOne: false
+            referencedRelation: "game_days"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_home_team_id_fkey"
+            columns: ["home_team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rounds: {
+        Row: {
+          championship_id: string
+          created_at: string
+          game_day_id: string | null
+          id: string
+          name: string | null
+          number: number
+          user_id: string
+        }
+        Insert: {
+          championship_id: string
+          created_at?: string
+          game_day_id?: string | null
+          id?: string
+          name?: string | null
+          number: number
+          user_id: string
+        }
+        Update: {
+          championship_id?: string
+          created_at?: string
+          game_day_id?: string | null
+          id?: string
+          name?: string | null
+          number?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rounds_championship_id_fkey"
+            columns: ["championship_id"]
+            isOneToOne: false
+            referencedRelation: "championships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rounds_game_day_id_fkey"
+            columns: ["game_day_id"]
+            isOneToOne: false
+            referencedRelation: "game_days"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teams: {
+        Row: {
+          created_at: string
+          id: string
+          logo: string | null
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          logo?: string | null
+          name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          logo?: string | null
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

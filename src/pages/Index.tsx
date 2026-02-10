@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useChampionships } from '@/hooks/useChampionships';
+import { useAuth } from '@/hooks/useAuth';
 import { KnockoutPhase } from '@/types/championship';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Trophy, Plus, Calendar, Users, Pencil, Trash2, Sparkles, Swords } from 'lucide-react';
+import { Trophy, Plus, Calendar, Users, Pencil, Trash2, Sparkles, Swords, LogOut } from 'lucide-react';
 import { toast } from 'sonner';
 
 const AVAILABLE_PHASES: { key: KnockoutPhase; label: string }[] = [
@@ -22,6 +23,7 @@ const AVAILABLE_PHASES: { key: KnockoutPhase; label: string }[] = [
 
 const Index = () => {
   const { championships, createChampionship, updateChampionship, deleteChampionship, getChampionshipTeams, getChampionshipMatches, createGameDay } = useChampionships();
+  const { signOut, user } = useAuth();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingChampionship, setEditingChampionship] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -58,38 +60,39 @@ const Index = () => {
     setFormData({ name: '', startDate: '', description: '', knockoutPhases: ['quarter-finals', 'semi-finals', 'final'], gameDayNames: ['Sábado', 'Domingo'], qualifyingTeams: { 'Sábado': 6, 'Domingo': 6 } });
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!formData.name.trim()) {
       toast.error('O nome do campeonato é obrigatório');
       return;
     }
-    const championship = createChampionship({ ...formData, gameDays: [] });
+    const championship = await createChampionship({ ...formData, gameDays: [] });
+    if (!championship) return;
     // Auto-create game days based on selected day names
-    formData.gameDayNames.forEach(dayName => {
-      createGameDay(championship.id, dayName);
-    });
+    for (const dayName of formData.gameDayNames) {
+      await createGameDay(championship.id, dayName);
+    }
     // Save qualifying teams config
     if (Object.keys(formData.qualifyingTeams).length > 0) {
-      updateChampionship(championship.id, { qualifyingTeams: formData.qualifyingTeams });
+      await updateChampionship(championship.id, { qualifyingTeams: formData.qualifyingTeams });
     }
     resetForm();
     setIsCreateOpen(false);
     toast.success('Campeonato criado com sucesso!');
   };
 
-  const handleEdit = () => {
+  const handleEdit = async () => {
     if (!formData.name.trim() || !editingChampionship) {
       toast.error('O nome do campeonato é obrigatório');
       return;
     }
-    updateChampionship(editingChampionship, formData);
+    await updateChampionship(editingChampionship, formData);
     resetForm();
     setEditingChampionship(null);
     toast.success('Campeonato atualizado com sucesso!');
   };
 
-  const handleDelete = (id: string) => {
-    deleteChampionship(id);
+  const handleDelete = async (id: string) => {
+    await deleteChampionship(id);
     toast.success('Campeonato excluído com sucesso!');
   };
 
@@ -219,7 +222,8 @@ const Index = () => {
               </div>
             </div>
 
-            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
               <DialogTrigger asChild>
                 <Button size="lg" className="gap-2 bg-gradient-primary hover:opacity-90 transition-opacity shadow-lg glow-primary w-full sm:w-auto">
                   <Plus className="h-5 w-5" />
@@ -281,6 +285,10 @@ const Index = () => {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+              <Button variant="outline" size="icon" onClick={() => signOut()} title="Sair">
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </header>
