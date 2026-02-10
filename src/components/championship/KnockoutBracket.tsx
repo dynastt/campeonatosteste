@@ -240,68 +240,140 @@ const KnockoutBracket = ({
           </div>
         </div>
 
-        {winner && (
-          <div className="mt-2 pt-2 border-t text-xs text-muted-foreground text-center flex items-center justify-center gap-1">
-            <Trophy className="h-3 w-3 text-accent" />
-            {winner.name} avança
-          </div>
-        )}
+        {winner && (() => {
+          const phaseInfo = ALL_PHASES.find(p => p.key === phase);
+          const isFinal = phase === 'final';
+          const isSecondWeek = phaseInfo ? position > phaseInfo.baseCount : false;
+          const shouldShow = isFinal || isSecondWeek;
+          
+          if (!shouldShow) return null;
+          
+          return (
+            <div className="mt-2 pt-2 border-t text-xs text-muted-foreground text-center flex items-center justify-center gap-1">
+              <Trophy className="h-3 w-3 text-accent" />
+              {isFinal ? `${winner.name} Ganhou!` : `${winner.name} avança`}
+            </div>
+          );
+        })()}
       </div>
     );
   };
 
-  // Knockout standings - current active phase
-  const knockoutStandings = useMemo(() => {
+  // Cumulative knockout standings per phase
+  const phaseStandings = useMemo(() => {
     const phaseOrder: KnockoutPhase[] = ['round-of-16', 'quarter-finals', 'semi-finals', 'final'];
-    let latestPhase: KnockoutPhase | null = null;
-    for (const phase of phaseOrder) {
-      if (knockoutMatches.some(m => m.phase === phase)) {
-        latestPhase = phase;
-      }
-    }
-    if (!latestPhase) return { standings: [], phaseLabel: '' };
+    const result: { phase: KnockoutPhase; label: string; standings: ReturnType<typeof calculateStandings> }[] = [];
+    let previousStatsMap = new Map<string, { points: number; played: number; won: number; drawn: number; lost: number; goalsFor: number; goalsAgainst: number; woCount: number; gaveWO: boolean }>();
 
-    const phaseMatches = knockoutMatches.filter(m => m.phase === latestPhase);
-    const teamIds = new Set<string>();
-    phaseMatches.forEach(m => {
-      if (m.homeTeamId) teamIds.add(m.homeTeamId);
-      if (m.awayTeamId) teamIds.add(m.awayTeamId);
-    });
-    const phaseTeams = teams.filter(t => teamIds.has(t.id));
-    const matchesForStandings: Match[] = phaseMatches.map(m => ({
-      id: m.id,
-      championshipId: m.championshipId,
-      homeTeamId: m.homeTeamId || '',
-      awayTeamId: m.awayTeamId || '',
-      homeGoals: m.homeGoals,
-      awayGoals: m.awayGoals,
-      homeWO: m.homeWO,
-      awayWO: m.awayWO,
-      round: 0,
-      played: m.homeGoals !== null || m.homeWO || m.awayWO,
-      createdAt: m.createdAt,
-    }));
-    const label = ALL_PHASES.find(p => p.key === latestPhase)?.label || '';
-    return { standings: calculateStandings(phaseTeams, matchesForStandings), phaseLabel: label };
+    for (const phase of phaseOrder) {
+      const phaseMatches = knockoutMatches.filter(m => m.phase === phase);
+      if (phaseMatches.length === 0) continue;
+
+      const teamIds = new Set<string>();
+      phaseMatches.forEach(m => {
+        if (m.homeTeamId) teamIds.add(m.homeTeamId);
+        if (m.awayTeamId) teamIds.add(m.awayTeamId);
+      });
+      const phaseTeams = teams.filter(t => teamIds.has(t.id));
+      const matchesForStandings: Match[] = phaseMatches.map(m => ({
+        id: m.id,
+        championshipId: m.championshipId,
+        homeTeamId: m.homeTeamId || '',
+        awayTeamId: m.awayTeamId || '',
+        homeGoals: m.homeGoals,
+        awayGoals: m.awayGoals,
+        homeWO: m.homeWO,
+        awayWO: m.awayWO,
+        round: 0,
+        played: m.homeGoals !== null || m.homeWO || m.awayWO,
+        createdAt: m.createdAt,
+      }));
+
+      const currentStandings = calculateStandings(phaseTeams, matchesForStandings);
+
+      // Add previous phase accumulated stats
+      const cumulativeStandings = currentStandings.map(stat => {
+        const prev = previousStatsMap.get(stat.teamId);
+        if (prev) {
+          const newPlayed = stat.played + prev.played;
+          const newPoints = stat.points + prev.points;
+          const newGoalsFor = stat.goalsFor + prev.goalsFor;
+          const newGoalsAgainst = stat.goalsAgainst + prev.goalsAgainst;
+          return {
+            ...stat,
+            points: newPoints,
+            played: newPlayed,
+            won: stat.won + prev.won,
+            drawn: stat.drawn + prev.drawn,
+            lost: stat.lost + prev.lost,
+            goalsFor: newGoalsFor,
+            goalsAgainst: newGoalsAgainst,
+            goalDifference: newGoalsFor - newGoalsAgainst,
+            gaveWO: stat.gaveWO || prev.gaveWO,
+            woCount: stat.woCount + prev.woCount,
+            pointsPercentage: newPlayed > 0 ? (newPoints / (newPlayed * 3)) * 100 : 0,
+          };
+        }
+        return stat;
+      });
+
+      // Re-sort after accumulation
+      cumulativeStandings.sort((a, b) => {
+        if (b.points !== a.points) return b.points - a.points;
+        if (b.won !== a.won) return b.won - a.won;
+        if (a.gaveWO !== b.gaveWO) return a.gaveWO ? 1 : -1;
+        if (a.goalsAgainst !== b.goalsAgainst) return a.goalsAgainst - b.goalsAgainst;
+        if (b.goalDifference !== a.goalDifference) return b.goalDifference - a.goalDifference;
+        return a.team.name.localeCompare(b.team.name);
+      });
+
+      const label = ALL_PHASES.find(p => p.key === phase)?.label || '';
+      result.push({ phase, label, standings: cumulativeStandings });
+
+      // Store cumulative stats for next phase
+      const newPrevMap = new Map<string, typeof previousStatsMap extends Map<string, infer V> ? V : never>();
+      cumulativeStandings.forEach(stat => {
+        newPrevMap.set(stat.teamId, {
+          points: stat.points,
+          played: stat.played,
+          won: stat.won,
+          drawn: stat.drawn,
+          lost: stat.lost,
+          goalsFor: stat.goalsFor,
+          goalsAgainst: stat.goalsAgainst,
+          woCount: stat.woCount,
+          gaveWO: stat.gaveWO,
+        });
+      });
+      previousStatsMap = newPrevMap;
+    }
+
+    return result;
   }, [knockoutMatches, teams]);
 
   return (
     <>
       <div className="space-y-6">
-        {/* Knockout Standings */}
-        {knockoutStandings.standings.length > 0 && (
-          <Card className="bg-gradient-card border-border/50">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Trophy className="h-5 w-5 text-primary" />
-                Classificação - {knockoutStandings.phaseLabel}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <StandingsTable standings={knockoutStandings.standings} title={`Classificação - ${knockoutStandings.phaseLabel}`} />
-            </CardContent>
-          </Card>
-        )}
+        {/* Knockout Standings per phase */}
+        {phaseStandings.map(({ phase, label, standings: phaseStandingsData }) => (
+          phaseStandingsData.length > 0 && (
+            <Card key={`standings-${phase}`} className="bg-gradient-card border-border/50">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Trophy className="h-5 w-5 text-primary" />
+                  Classificação - {label}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <StandingsTable 
+                  standings={phaseStandingsData} 
+                  title={`Classificação - ${label}`}
+                  showPercentageColumn
+                />
+              </CardContent>
+            </Card>
+          )
+        ))}
 
         {phases.map((phase) => {
           const phaseMatches = getPhaseMatches(phase.key);
