@@ -429,9 +429,9 @@ const ChampionshipDetail = () => {
         open={isAddTeamOpen}
         onOpenChange={setIsAddTeamOpen}
         availableTeams={availableTeams}
-        onCreateTeam={(name, logo) => {
-          const team = createTeam({ name, logo });
-          addTeamToChampionship(championship.id, team.id);
+        onCreateTeam={async (name, logo) => {
+          const team = await createTeam({ name, logo });
+          if (team) await addTeamToChampionship(championship.id, team.id);
         }}
         onAddExistingTeam={(teamId) => {
           addTeamToChampionship(championship.id, teamId);

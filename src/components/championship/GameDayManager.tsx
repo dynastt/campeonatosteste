@@ -20,7 +20,7 @@ interface GameDayManagerProps {
   rounds: Round[];
   championshipId: string;
   qualifyingTeams?: Record<string, number>;
-  onCreateGameDay: (name: string) => GameDay;
+  onCreateGameDay: (name: string) => GameDay | Promise<GameDay | null>;
   onDeleteGameDay: (id: string) => void;
   onAddTeamToGameDay: (gameDayId: string, teamId: string) => void;
   onRemoveTeamFromGameDay: (gameDayId: string, teamId: string) => void;
@@ -72,15 +72,15 @@ const GameDayManager = ({
     }
   }, [selectedGameDay, gameDays]);
 
-  const handleCreateGameDay = () => {
+  const handleCreateGameDay = async () => {
     if (!newDayName.trim()) {
       toast.error('Digite um nome para o dia');
       return;
     }
-    const gameDay = onCreateGameDay(newDayName.trim());
+    const gameDay = await onCreateGameDay(newDayName.trim());
     setNewDayName('');
     setIsCreateDayOpen(false);
-    setActiveTab(gameDay.id);
+    if (gameDay) setActiveTab(gameDay.id);
     toast.success(`Dia "${newDayName}" criado!`);
   };
 
