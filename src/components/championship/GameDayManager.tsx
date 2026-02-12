@@ -3,15 +3,15 @@ import { GameDay, Team, Match, Round } from '@/types/championship';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Trash2, Users, Calendar, Sparkles, Download } from 'lucide-react';
+import { Plus, Trash2, Users, Calendar, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import RoundsList from './RoundsList';
 import StandingsTable from './StandingsTable';
 import { calculateStandings } from '@/utils/standings';
+
+const AVAILABLE_GAME_DAYS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
 
 interface GameDayManagerProps {
   gameDays: GameDay[];
@@ -24,6 +24,7 @@ interface GameDayManagerProps {
   onDeleteGameDay: (id: string) => void;
   onAddTeamToGameDay: (gameDayId: string, teamId: string) => void;
   onRemoveTeamFromGameDay: (gameDayId: string, teamId: string) => void;
+  onUpdateGameDayTeams: (gameDayId: string, teamIds: string[]) => void;
   onCreateRound: (name?: string, gameDayId?: string) => void;
   onDeleteRound: (id: string) => void;
   onCreateMatch: (data: Omit<Match, 'id' | 'createdAt'>) => void;
@@ -42,27 +43,26 @@ const GameDayManager = ({
   onDeleteGameDay,
   onAddTeamToGameDay,
   onRemoveTeamFromGameDay,
+  onUpdateGameDayTeams,
   onCreateRound,
   onDeleteRound,
   onCreateMatch,
   onUpdateMatch,
   onDeleteMatch,
 }: GameDayManagerProps) => {
-  const [isCreateDayOpen, setIsCreateDayOpen] = useState(false);
-  const [newDayName, setNewDayName] = useState('');
+  const [isManageDaysOpen, setIsManageDaysOpen] = useState(false);
   const [isManageTeamsOpen, setIsManageTeamsOpen] = useState(false);
   const [selectedGameDay, setSelectedGameDay] = useState<GameDay | null>(null);
   const [activeTab, setActiveTab] = useState<string>('');
   const [localSelectedTeams, setLocalSelectedTeams] = useState<Set<string>>(new Set());
+  const [selectedDays, setSelectedDays] = useState<Set<string>>(new Set());
 
-  // Update activeTab when gameDays change
   useEffect(() => {
     if (gameDays.length > 0 && !activeTab) {
       setActiveTab(gameDays[0].id);
     }
   }, [gameDays, activeTab]);
 
-  // Sync local state with selected game day
   useEffect(() => {
     if (selectedGameDay) {
       const currentGameDay = gameDays.find(g => g.id === selectedGameDay.id);
@@ -72,26 +72,46 @@ const GameDayManager = ({
     }
   }, [selectedGameDay, gameDays]);
 
-  const handleCreateGameDay = async () => {
-    if (!newDayName.trim()) {
-      toast.error('Digite um nome para o dia');
-      return;
-    }
-    const gameDay = await onCreateGameDay(newDayName.trim());
-    setNewDayName('');
-    setIsCreateDayOpen(false);
-    if (gameDay) setActiveTab(gameDay.id);
-    toast.success(`Dia "${newDayName}" criado!`);
+  const openManageDays = () => {
+    setSelectedDays(new Set(gameDays.map(g => g.name)));
+    setIsManageDaysOpen(true);
   };
 
-  const handleDeleteGameDay = (gameDay: GameDay) => {
-    if (confirm(`Tem certeza que deseja excluir "${gameDay.name}"? Todas as rodadas e partidas deste dia serão excluídas.`)) {
-      onDeleteGameDay(gameDay.id);
-      if (activeTab === gameDay.id) {
-        setActiveTab(gameDays.filter(g => g.id !== gameDay.id)[0]?.id || '');
+  const toggleDay = (day: string) => {
+    setSelectedDays(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(day)) newSet.delete(day);
+      else newSet.add(day);
+      return newSet;
+    });
+  };
+
+  const handleSaveDays = async () => {
+    const existingNames = new Set(gameDays.map(g => g.name));
+
+    // Create new days
+    for (const day of selectedDays) {
+      if (!existingNames.has(day)) {
+        const created = await onCreateGameDay(day);
+        if (created) {
+          toast.success(`Dia "${day}" criado!`);
+        }
       }
-      toast.success('Dia excluído!');
     }
+
+    // Delete removed days
+    for (const gd of gameDays) {
+      if (!selectedDays.has(gd.name)) {
+        onDeleteGameDay(gd.id);
+        toast.success(`Dia "${gd.name}" excluído!`);
+        if (activeTab === gd.id) {
+          const remaining = gameDays.filter(g => g.id !== gd.id && selectedDays.has(g.name));
+          setActiveTab(remaining[0]?.id || '');
+        }
+      }
+    }
+
+    setIsManageDaysOpen(false);
   };
 
   const openManageTeams = (gameDay: GameDay) => {
@@ -100,15 +120,13 @@ const GameDayManager = ({
     setIsManageTeamsOpen(true);
   };
 
-  // Check if team is in another game day
   const getTeamGameDay = (teamId: string): GameDay | undefined => {
-    return gameDays.find(g => 
+    return gameDays.find(g =>
       g.id !== selectedGameDay?.id && g.teamIds.includes(teamId)
     );
   };
 
   const toggleTeamInGameDay = (teamId: string) => {
-    // Check if team is in another day
     const otherDay = getTeamGameDay(teamId);
     if (otherDay && !localSelectedTeams.has(teamId)) {
       toast.error(`Este time já está no dia "${otherDay.name}". Remova-o de lá primeiro.`);
@@ -117,11 +135,8 @@ const GameDayManager = ({
 
     setLocalSelectedTeams(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(teamId)) {
-        newSet.delete(teamId);
-      } else {
-        newSet.add(teamId);
-      }
+      if (newSet.has(teamId)) newSet.delete(teamId);
+      else newSet.add(teamId);
       return newSet;
     });
   };
@@ -129,43 +144,11 @@ const GameDayManager = ({
   const saveTeamSelection = () => {
     if (!selectedGameDay) return;
 
-    const currentTeamIds = new Set(gameDays.find(g => g.id === selectedGameDay.id)?.teamIds || []);
-    
-    // Collect all teams to add/remove
-    const teamsToRemove: string[] = [];
-    const teamsToAdd: string[] = [];
-
-    // Find teams that were unchecked
-    currentTeamIds.forEach(teamId => {
-      if (!localSelectedTeams.has(teamId)) {
-        teamsToRemove.push(teamId);
-      }
-    });
-
-    // Find teams that were checked
-    localSelectedTeams.forEach(teamId => {
-      if (!currentTeamIds.has(teamId)) {
-        teamsToAdd.push(teamId);
-      }
-    });
-
-    // Remove all unchecked teams
-    teamsToRemove.forEach(teamId => {
-      onRemoveTeamFromGameDay(selectedGameDay.id, teamId);
-    });
-
-    // Add all checked teams
-    teamsToAdd.forEach(teamId => {
-      onAddTeamToGameDay(selectedGameDay.id, teamId);
-    });
+    const newTeamIds = Array.from(localSelectedTeams);
+    onUpdateGameDayTeams(selectedGameDay.id, newTeamIds);
 
     setIsManageTeamsOpen(false);
-    const totalChanges = teamsToRemove.length + teamsToAdd.length;
-    if (totalChanges > 0) {
-      toast.success(`${teamsToAdd.length} time(s) adicionado(s), ${teamsToRemove.length} removido(s)!`);
-    } else {
-      toast.info('Nenhuma alteração realizada.');
-    }
+    toast.success('Times atualizados!');
   };
 
   const getGameDayTeams = (gameDayId: string) => {
@@ -196,46 +179,51 @@ const GameDayManager = ({
           </div>
           <h3 className="text-lg font-semibold mb-2">Nenhum dia de jogo criado</h3>
           <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-            Crie dias de jogo (ex: Sábado, Domingo) para organizar os times e rodadas separadamente. Cada dia terá sua própria classificação!
+            Crie dias de jogo (ex: Sábado, Domingo) para organizar os times e rodadas separadamente.
           </p>
-          <Button onClick={() => setIsCreateDayOpen(true)} className="gap-2 bg-gradient-primary hover:opacity-90">
+          <Button onClick={openManageDays} className="gap-2 bg-gradient-primary hover:opacity-90">
             <Plus className="h-4 w-4" />
-            Criar Dia de Jogo
+            Gerenciar Dias de Jogo
           </Button>
 
-          {/* Create Day Dialog */}
-          <Dialog open={isCreateDayOpen} onOpenChange={setIsCreateDayOpen}>
+          {/* Manage Days Dialog */}
+          <Dialog open={isManageDaysOpen} onOpenChange={setIsManageDaysOpen}>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                   <Calendar className="h-5 w-5 text-primary" />
-                  Criar Dia de Jogo
+                  Gerenciar Dias de Jogo
                 </DialogTitle>
                 <DialogDescription>
-                  Ex: Sábado, Domingo, Segunda-feira
+                  Selecione os dias da semana com jogos
                 </DialogDescription>
               </DialogHeader>
-
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="day-name">Nome do Dia</Label>
-                  <Input
-                    id="day-name"
-                    placeholder="Ex: Sábado"
-                    value={newDayName}
-                    onChange={(e) => setNewDayName(e.target.value)}
-                    className="h-11"
-                    onKeyDown={(e) => e.key === 'Enter' && handleCreateGameDay()}
-                  />
-                </div>
+              <div className="grid grid-cols-2 gap-2 py-4">
+                {AVAILABLE_GAME_DAYS.map(day => (
+                  <div
+                    key={day}
+                    className={`flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-all ${
+                      selectedDays.has(day)
+                        ? 'bg-primary/10 border-primary/30'
+                        : 'hover:bg-muted/50 border-border'
+                    }`}
+                    onClick={() => toggleDay(day)}
+                  >
+                    <Checkbox
+                      checked={selectedDays.has(day)}
+                      onCheckedChange={() => toggleDay(day)}
+                      className="pointer-events-none"
+                    />
+                    <span className="text-sm font-medium">{day}</span>
+                  </div>
+                ))}
               </div>
-
               <DialogFooter className="gap-2">
-                <Button variant="outline" onClick={() => setIsCreateDayOpen(false)}>
+                <Button variant="outline" onClick={() => setIsManageDaysOpen(false)}>
                   Cancelar
                 </Button>
-                <Button onClick={handleCreateGameDay} className="bg-gradient-primary hover:opacity-90">
-                  Criar
+                <Button onClick={handleSaveDays} className="bg-gradient-primary hover:opacity-90">
+                  Salvar
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -248,9 +236,9 @@ const GameDayManager = ({
   return (
     <>
       <div className="flex justify-end mb-4">
-        <Button onClick={() => setIsCreateDayOpen(true)} variant="outline" className="gap-2">
+        <Button onClick={openManageDays} variant="outline" className="gap-2">
           <Plus className="h-4 w-4" />
-          Novo Dia
+          Gerenciar Dias
         </Button>
       </div>
 
@@ -276,7 +264,6 @@ const GameDayManager = ({
 
           return (
             <TabsContent key={day.id} value={day.id} className="space-y-6">
-              {/* Day Header */}
               <Card className="bg-gradient-card border-border/50">
                 <CardHeader className="pb-3">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -294,20 +281,11 @@ const GameDayManager = ({
                         <Users className="h-4 w-4" />
                         Times ({dayTeams.length})
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => handleDeleteGameDay(day)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
                     </div>
                   </div>
                 </CardHeader>
               </Card>
 
-              {/* Day Content Tabs */}
               <Tabs defaultValue="rounds">
                 <TabsList className="grid w-full grid-cols-2 max-w-xs bg-muted/50">
                   <TabsTrigger value="rounds">Rodadas</TabsTrigger>
@@ -335,8 +313,8 @@ const GameDayManager = ({
                       <CardTitle className="text-lg">Classificação - {day.name}</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <StandingsTable 
-                        standings={standings} 
+                      <StandingsTable
+                        standings={standings}
                         title={`Classificação - ${day.name}`}
                         showExport={true}
                         qualifyingCount={qualifyingTeams?.[day.name]}
@@ -350,45 +328,62 @@ const GameDayManager = ({
         })}
       </Tabs>
 
-      {/* Create Day Dialog */}
-      <Dialog open={isCreateDayOpen} onOpenChange={setIsCreateDayOpen}>
+      {/* Manage Days Dialog */}
+      <Dialog open={isManageDaysOpen} onOpenChange={setIsManageDaysOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5 text-primary" />
-              Criar Dia de Jogo
+              Gerenciar Dias de Jogo
             </DialogTitle>
             <DialogDescription>
-              Ex: Sábado, Domingo, Segunda-feira
+              Selecione os dias da semana com jogos. Remover um dia exclui suas rodadas e partidas.
             </DialogDescription>
           </DialogHeader>
-
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="day-name-2">Nome do Dia</Label>
-              <Input
-                id="day-name-2"
-                placeholder="Ex: Sábado"
-                value={newDayName}
-                onChange={(e) => setNewDayName(e.target.value)}
-                className="h-11"
-                onKeyDown={(e) => e.key === 'Enter' && handleCreateGameDay()}
-              />
-            </div>
+          <div className="grid grid-cols-2 gap-2 py-4">
+            {AVAILABLE_GAME_DAYS.map(day => {
+              const existingDay = gameDays.find(g => g.name === day);
+              const hasData = existingDay && (
+                rounds.some(r => r.gameDayId === existingDay.id) ||
+                matches.some(m => m.gameDayId === existingDay.id)
+              );
+              return (
+                <div
+                  key={day}
+                  className={`flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-all ${
+                    selectedDays.has(day)
+                      ? 'bg-primary/10 border-primary/30'
+                      : 'hover:bg-muted/50 border-border'
+                  }`}
+                  onClick={() => toggleDay(day)}
+                >
+                  <Checkbox
+                    checked={selectedDays.has(day)}
+                    onCheckedChange={() => toggleDay(day)}
+                    className="pointer-events-none"
+                  />
+                  <div>
+                    <span className="text-sm font-medium">{day}</span>
+                    {hasData && !selectedDays.has(day) && (
+                      <p className="text-xs text-destructive">Tem dados!</p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setIsCreateDayOpen(false)}>
+            <Button variant="outline" onClick={() => setIsManageDaysOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleCreateGameDay} className="bg-gradient-primary hover:opacity-90">
-              Criar
+            <Button onClick={handleSaveDays} className="bg-gradient-primary hover:opacity-90">
+              Salvar
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Manage Teams Dialog - FIXED */}
+      {/* Manage Teams Dialog */}
       <Dialog open={isManageTeamsOpen} onOpenChange={(open) => {
         if (!open) {
           setIsManageTeamsOpen(false);
@@ -421,15 +416,15 @@ const GameDayManager = ({
                   <div
                     key={team.id}
                     className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
-                      isDisabled 
+                      isDisabled
                         ? 'opacity-50 cursor-not-allowed bg-muted/30 border-border'
-                        : isInGameDay 
-                          ? 'bg-primary/10 border-primary/30 cursor-pointer' 
+                        : isInGameDay
+                          ? 'bg-primary/10 border-primary/30 cursor-pointer'
                           : 'hover:bg-muted/50 border-border cursor-pointer'
                     }`}
                     onClick={() => !isDisabled && toggleTeamInGameDay(team.id)}
                   >
-                    <Checkbox 
+                    <Checkbox
                       checked={isInGameDay}
                       onCheckedChange={() => !isDisabled && toggleTeamInGameDay(team.id)}
                       className="pointer-events-none"

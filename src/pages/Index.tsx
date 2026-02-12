@@ -21,8 +21,10 @@ const AVAILABLE_PHASES: { key: KnockoutPhase; label: string }[] = [
   { key: 'final', label: 'Final' },
 ];
 
+const AVAILABLE_GAME_DAYS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
+
 const Index = () => {
-  const { championships, createChampionship, updateChampionship, deleteChampionship, getChampionshipTeams, getChampionshipMatches, createGameDay } = useChampionships();
+  const { championships, createChampionship, updateChampionship, deleteChampionship, getChampionshipTeams, getChampionshipMatches, getChampionshipGameDays, createGameDay, deleteGameDay } = useChampionships();
   const { signOut, user } = useAuth();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingChampionship, setEditingChampionship] = useState<string | null>(null);
@@ -67,11 +69,9 @@ const Index = () => {
     }
     const championship = await createChampionship({ ...formData, gameDays: [] });
     if (!championship) return;
-    // Auto-create game days based on selected day names
     for (const dayName of formData.gameDayNames) {
       await createGameDay(championship.id, dayName);
     }
-    // Save qualifying teams config
     if (Object.keys(formData.qualifyingTeams).length > 0) {
       await updateChampionship(championship.id, { qualifyingTeams: formData.qualifyingTeams });
     }
@@ -85,7 +85,33 @@ const Index = () => {
       toast.error('O nome do campeonato é obrigatório');
       return;
     }
-    await updateChampionship(editingChampionship, formData);
+
+    // Get existing game days for this championship
+    const existingGameDays = getChampionshipGameDays(editingChampionship);
+    const existingDayNames = new Set(existingGameDays.map(g => g.name));
+
+    // Create new game days
+    for (const dayName of formData.gameDayNames) {
+      if (!existingDayNames.has(dayName)) {
+        await createGameDay(editingChampionship, dayName);
+      }
+    }
+
+    // Delete removed game days
+    for (const gd of existingGameDays) {
+      if (!formData.gameDayNames.includes(gd.name)) {
+        await deleteGameDay(gd.id);
+      }
+    }
+
+    await updateChampionship(editingChampionship, {
+      name: formData.name,
+      startDate: formData.startDate,
+      description: formData.description,
+      knockoutPhases: formData.knockoutPhases,
+      gameDayNames: formData.gameDayNames,
+      qualifyingTeams: formData.qualifyingTeams,
+    });
     resetForm();
     setEditingChampionship(null);
     toast.success('Campeonato atualizado com sucesso!');
@@ -97,18 +123,18 @@ const Index = () => {
   };
 
   const openEditDialog = (championship: typeof championships[0]) => {
+    const existingGameDays = getChampionshipGameDays(championship.id);
+    const dayNames = existingGameDays.map(g => g.name);
     setFormData({
       name: championship.name,
       startDate: championship.startDate || '',
       description: championship.description || '',
       knockoutPhases: championship.knockoutPhases || ['quarter-finals', 'semi-finals', 'final'],
-      gameDayNames: [],
+      gameDayNames: dayNames,
       qualifyingTeams: championship.qualifyingTeams || {},
     });
     setEditingChampionship(championship.id);
   };
-
-  const AVAILABLE_GAME_DAYS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
 
   const PhaseSelector = () => (
     <div className="grid gap-2">
@@ -224,67 +250,47 @@ const Index = () => {
 
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-              <DialogTrigger asChild>
-                <Button size="lg" className="gap-2 bg-gradient-primary hover:opacity-90 transition-opacity shadow-lg glow-primary w-full sm:w-auto">
-                  <Plus className="h-5 w-5" />
-                  <span>Novo Campeonato</span>
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2">
-                    <Trophy className="h-5 w-5 text-primary" />
-                    Criar Novo Campeonato
-                  </DialogTitle>
-                  <DialogDescription>
-                    Preencha as informações do seu campeonato
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="name">Nome do Campeonato *</Label>
-                    <Input
-                      id="name"
-                      value={formData.name}
-                      onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                      placeholder="Ex: Campeonato Brasileiro 2024"
-                      className="h-11"
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="startDate">Data de Início</Label>
-                    <Input
-                      id="startDate"
-                      type="date"
-                      value={formData.startDate}
-                      onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
-                      className="h-11"
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="description">Descrição</Label>
-                    <Textarea
-                      id="description"
-                      value={formData.description}
-                      onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                      placeholder="Descrição opcional do campeonato"
-                      className="resize-none"
-                      rows={3}
-                    />
-                  </div>
-                  <PhaseSelector />
-                  <GameDaySelector />
-                </div>
-                <DialogFooter className="gap-2">
-                  <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
-                    Cancelar
+                <DialogTrigger asChild>
+                  <Button size="lg" className="gap-2 bg-gradient-primary hover:opacity-90 transition-opacity shadow-lg glow-primary w-full sm:w-auto">
+                    <Plus className="h-5 w-5" />
+                    <span>Novo Campeonato</span>
                   </Button>
-                  <Button onClick={handleCreate} className="bg-gradient-primary hover:opacity-90">
-                    Criar Campeonato
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <Trophy className="h-5 w-5 text-primary" />
+                      Criar Novo Campeonato
+                    </DialogTitle>
+                    <DialogDescription>Preencha as informações do seu campeonato</DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="name">Nome do Campeonato *</Label>
+                      <Input id="name" value={formData.name}
+                        onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                        placeholder="Ex: Campeonato Brasileiro 2024" className="h-11" />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="startDate">Data de Início</Label>
+                      <Input id="startDate" type="date" value={formData.startDate}
+                        onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))} className="h-11" />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="description">Descrição</Label>
+                      <Textarea id="description" value={formData.description}
+                        onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                        placeholder="Descrição opcional do campeonato" className="resize-none" rows={3} />
+                    </div>
+                    <PhaseSelector />
+                    <GameDaySelector />
+                  </div>
+                  <DialogFooter className="gap-2">
+                    <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancelar</Button>
+                    <Button onClick={handleCreate} className="bg-gradient-primary hover:opacity-90">Criar Campeonato</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
               <Button variant="outline" size="icon" onClick={() => signOut()} title="Sair">
                 <LogOut className="h-4 w-4" />
               </Button>
@@ -303,17 +309,12 @@ const Index = () => {
               </div>
               <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 h-8 w-20 bg-black/5 dark:bg-white/5 rounded-full blur-xl" />
             </div>
-            <h2 className="mb-3 text-xl sm:text-2xl font-bold text-foreground">
-              Nenhum campeonato ainda
-            </h2>
+            <h2 className="mb-3 text-xl sm:text-2xl font-bold text-foreground">Nenhum campeonato ainda</h2>
             <p className="mb-8 text-muted-foreground max-w-md px-4">
               Crie seu primeiro campeonato e comece a organizar suas partidas de futebol
             </p>
-            <Button
-              onClick={() => setIsCreateOpen(true)}
-              size="lg"
-              className="gap-2 bg-gradient-primary hover:opacity-90 shadow-lg glow-primary"
-            >
+            <Button onClick={() => setIsCreateOpen(true)} size="lg"
+              className="gap-2 bg-gradient-primary hover:opacity-90 shadow-lg glow-primary">
               <Plus className="h-5 w-5" />
               Criar Primeiro Campeonato
             </Button>
@@ -331,61 +332,39 @@ const Index = () => {
                   <div className="absolute right-2 top-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                     <Dialog open={editingChampionship === championship.id} onOpenChange={(open) => !open && setEditingChampionship(null)}>
                       <DialogTrigger asChild>
-                        <Button
-                          variant="secondary"
-                          size="icon"
-                          className="h-8 w-8 bg-background/80 backdrop-blur-sm"
-                          onClick={() => openEditDialog(championship)}
-                        >
+                        <Button variant="secondary" size="icon" className="h-8 w-8 bg-background/80 backdrop-blur-sm"
+                          onClick={() => openEditDialog(championship)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
                       </DialogTrigger>
                       <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
                         <DialogHeader>
                           <DialogTitle>Editar Campeonato</DialogTitle>
-                          <DialogDescription>
-                            Atualize as informações do campeonato
-                          </DialogDescription>
+                          <DialogDescription>Atualize as informações do campeonato</DialogDescription>
                         </DialogHeader>
                         <div className="grid gap-4 py-4">
                           <div className="grid gap-2">
                             <Label htmlFor="edit-name">Nome do Campeonato *</Label>
-                            <Input
-                              id="edit-name"
-                              value={formData.name}
-                              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                              className="h-11"
-                            />
+                            <Input id="edit-name" value={formData.name}
+                              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))} className="h-11" />
                           </div>
                           <div className="grid gap-2">
                             <Label htmlFor="edit-startDate">Data de Início</Label>
-                            <Input
-                              id="edit-startDate"
-                              type="date"
-                              value={formData.startDate}
-                              onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
-                              className="h-11"
-                            />
+                            <Input id="edit-startDate" type="date" value={formData.startDate}
+                              onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))} className="h-11" />
                           </div>
                           <div className="grid gap-2">
                             <Label htmlFor="edit-description">Descrição</Label>
-                            <Textarea
-                              id="edit-description"
-                              value={formData.description}
+                            <Textarea id="edit-description" value={formData.description}
                               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                              className="resize-none"
-                              rows={3}
-                            />
+                              className="resize-none" rows={3} />
                           </div>
                           <PhaseSelector />
+                          <GameDaySelector />
                         </div>
                         <DialogFooter className="gap-2">
-                          <Button variant="outline" onClick={() => setEditingChampionship(null)}>
-                            Cancelar
-                          </Button>
-                          <Button onClick={handleEdit} className="bg-gradient-primary hover:opacity-90">
-                            Salvar
-                          </Button>
+                          <Button variant="outline" onClick={() => setEditingChampionship(null)}>Cancelar</Button>
+                          <Button onClick={handleEdit} className="bg-gradient-primary hover:opacity-90">Salvar</Button>
                         </DialogFooter>
                       </DialogContent>
                     </Dialog>
@@ -405,10 +384,8 @@ const Index = () => {
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleDelete(championship.id)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
+                          <AlertDialogAction onClick={() => handleDelete(championship.id)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                             Excluir
                           </AlertDialogAction>
                         </AlertDialogFooter>
@@ -423,9 +400,7 @@ const Index = () => {
                       </div>
                       <CardTitle className="mt-3 line-clamp-1 text-lg">{championship.name}</CardTitle>
                       {championship.description && (
-                        <CardDescription className="line-clamp-2 text-sm">
-                          {championship.description}
-                        </CardDescription>
+                        <CardDescription className="line-clamp-2 text-sm">{championship.description}</CardDescription>
                       )}
                     </CardHeader>
                     <CardContent>
