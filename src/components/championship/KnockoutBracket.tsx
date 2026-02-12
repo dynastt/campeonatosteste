@@ -17,6 +17,7 @@ interface KnockoutBracketProps {
   teams: Team[];
   championshipId: string;
   enabledPhases: KnockoutPhase[];
+  allRegularMatches: Match[]; // game day + general round matches
   onCreateMatch: (data: Omit<KnockoutMatch, 'id' | 'createdAt'>) => void;
   onUpdateMatch: (id: string, data: Partial<KnockoutMatch>) => void;
   onDeleteMatch: (id: string) => void;
@@ -34,6 +35,7 @@ const KnockoutBracket = ({
   teams,
   championshipId,
   enabledPhases,
+  allRegularMatches,
   onCreateMatch,
   onUpdateMatch,
   onDeleteMatch,
@@ -64,14 +66,7 @@ const KnockoutBracket = ({
   const openCreateDialog = (phase: KnockoutPhase, position: number) => {
     setSelectedPhase(phase);
     setSelectedPosition(position);
-    setFormData({
-      homeTeamId: '',
-      awayTeamId: '',
-      homeGoals: null,
-      awayGoals: null,
-      homeWO: false,
-      awayWO: false,
-    });
+    setFormData({ homeTeamId: '', awayTeamId: '', homeGoals: null, awayGoals: null, homeWO: false, awayWO: false });
     setEditingMatch(null);
     setIsDialogOpen(true);
   };
@@ -102,53 +97,29 @@ const KnockoutBracket = ({
 
   const handleSubmit = () => {
     if (!selectedPhase) return;
+    if (!formData.homeTeamId || !formData.awayTeamId) { toast.error('Selecione os dois times'); return; }
+    if (formData.homeTeamId === formData.awayTeamId) { toast.error('Selecione times diferentes'); return; }
 
-    if (!formData.homeTeamId || !formData.awayTeamId) {
-      toast.error('Selecione os dois times');
-      return;
-    }
-
-    if (formData.homeTeamId === formData.awayTeamId) {
-      toast.error('Selecione times diferentes');
-      return;
-    }
-
-    const winnerId = calculateWinner(
-      formData.homeGoals,
-      formData.awayGoals,
-      formData.homeWO,
-      formData.awayWO,
-      formData.homeTeamId,
-      formData.awayTeamId
-    );
+    const winnerId = calculateWinner(formData.homeGoals, formData.awayGoals, formData.homeWO, formData.awayWO, formData.homeTeamId, formData.awayTeamId);
 
     if (editingMatch) {
       onUpdateMatch(editingMatch.id, {
-        homeTeamId: formData.homeTeamId,
-        awayTeamId: formData.awayTeamId,
+        homeTeamId: formData.homeTeamId, awayTeamId: formData.awayTeamId,
         homeGoals: formData.homeWO || formData.awayWO ? null : formData.homeGoals,
         awayGoals: formData.homeWO || formData.awayWO ? null : formData.awayGoals,
-        homeWO: formData.homeWO,
-        awayWO: formData.awayWO,
-        winnerId,
+        homeWO: formData.homeWO, awayWO: formData.awayWO, winnerId,
       });
       toast.success('Partida atualizada!');
     } else {
       onCreateMatch({
-        championshipId,
-        phase: selectedPhase,
-        position: selectedPosition,
-        homeTeamId: formData.homeTeamId,
-        awayTeamId: formData.awayTeamId,
+        championshipId, phase: selectedPhase, position: selectedPosition,
+        homeTeamId: formData.homeTeamId, awayTeamId: formData.awayTeamId,
         homeGoals: formData.homeWO || formData.awayWO ? null : formData.homeGoals,
         awayGoals: formData.homeWO || formData.awayWO ? null : formData.awayGoals,
-        homeWO: formData.homeWO,
-        awayWO: formData.awayWO,
-        winnerId,
+        homeWO: formData.homeWO, awayWO: formData.awayWO, winnerId,
       });
       toast.success('Partida criada!');
     }
-
     setIsDialogOpen(false);
   };
 
@@ -190,20 +161,12 @@ const KnockoutBracket = ({
         onClick={() => openEditDialog(match)}
       >
         <div className="absolute right-1 top-1 flex gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6"
-            onClick={(e) => { e.stopPropagation(); openEditDialog(match); }}
-          >
+          <Button variant="ghost" size="icon" className="h-6 w-6"
+            onClick={(e) => { e.stopPropagation(); openEditDialog(match); }}>
             <Edit2 className="h-3 w-3" />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10"
-            onClick={(e) => { e.stopPropagation(); handleDeleteMatch(match.id); }}
-          >
+          <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10"
+            onClick={(e) => { e.stopPropagation(); handleDeleteMatch(match.id); }}>
             <Trash2 className="h-3 w-3" />
           </Button>
         </div>
@@ -243,15 +206,28 @@ const KnockoutBracket = ({
         {winner && (() => {
           const phaseInfo = ALL_PHASES.find(p => p.key === phase);
           const isFinal = phase === 'final';
-          const isSecondWeek = phaseInfo ? position > phaseInfo.baseCount : false;
-          const shouldShow = isFinal || isSecondWeek;
-          
-          if (!shouldShow) return null;
-          
+
+          if (isFinal) {
+            return (
+              <div className="mt-2 pt-2 border-t text-xs text-muted-foreground text-center flex items-center justify-center gap-1">
+                <Trophy className="h-3 w-3 text-accent" />
+                {winner.name} Ganhou!
+              </div>
+            );
+          }
+
+          if (!phaseInfo) return null;
+
+          // Determine if this is a "second leg" game
+          const weekSize = Math.min(phaseInfo.baseCount, 4);
+          const isSecondLeg = Math.floor((position - 1) / weekSize) % 2 === 1;
+
+          if (!isSecondLeg) return null;
+
           return (
             <div className="mt-2 pt-2 border-t text-xs text-muted-foreground text-center flex items-center justify-center gap-1">
               <Trophy className="h-3 w-3 text-accent" />
-              {isFinal ? `${winner.name} Ganhou!` : `${winner.name} avança`}
+              {winner.name} avança
             </div>
           );
         })()}
@@ -259,11 +235,24 @@ const KnockoutBracket = ({
     );
   };
 
-  // Cumulative knockout standings per phase
+  // Cumulative knockout standings per phase, including game day + general round matches
   const phaseStandings = useMemo(() => {
     const phaseOrder: KnockoutPhase[] = ['round-of-16', 'quarter-finals', 'semi-finals', 'final'];
     const result: { phase: KnockoutPhase; label: string; standings: ReturnType<typeof calculateStandings> }[] = [];
-    let previousStatsMap = new Map<string, { points: number; played: number; won: number; drawn: number; lost: number; goalsFor: number; goalsAgainst: number; woCount: number; gaveWO: boolean }>();
+
+    // Pre-calculate regular match stats for all teams
+    const regularStats = new Map<string, { points: number; played: number; won: number; drawn: number; lost: number; goalsFor: number; goalsAgainst: number; woCount: number; gaveWO: boolean }>();
+    const regularStandings = calculateStandings(teams, allRegularMatches);
+    regularStandings.forEach(stat => {
+      regularStats.set(stat.teamId, {
+        points: stat.points, played: stat.played, won: stat.won, drawn: stat.drawn,
+        lost: stat.lost, goalsFor: stat.goalsFor, goalsAgainst: stat.goalsAgainst,
+        woCount: stat.woCount, gaveWO: stat.gaveWO,
+      });
+    });
+
+    // Accumulated knockout stats per team (across phases)
+    let accumulatedKnockoutStats = new Map<string, { points: number; played: number; won: number; drawn: number; lost: number; goalsFor: number; goalsAgainst: number; woCount: number; gaveWO: boolean }>();
 
     for (const phase of phaseOrder) {
       const phaseMatches = knockoutMatches.filter(m => m.phase === phase);
@@ -275,49 +264,74 @@ const KnockoutBracket = ({
         if (m.awayTeamId) teamIds.add(m.awayTeamId);
       });
       const phaseTeams = teams.filter(t => teamIds.has(t.id));
+
+      // Calculate this phase's knockout stats
       const matchesForStandings: Match[] = phaseMatches.map(m => ({
-        id: m.id,
-        championshipId: m.championshipId,
-        homeTeamId: m.homeTeamId || '',
-        awayTeamId: m.awayTeamId || '',
-        homeGoals: m.homeGoals,
-        awayGoals: m.awayGoals,
-        homeWO: m.homeWO,
-        awayWO: m.awayWO,
-        round: 0,
-        played: m.homeGoals !== null || m.homeWO || m.awayWO,
+        id: m.id, championshipId: m.championshipId,
+        homeTeamId: m.homeTeamId || '', awayTeamId: m.awayTeamId || '',
+        homeGoals: m.homeGoals, awayGoals: m.awayGoals,
+        homeWO: m.homeWO, awayWO: m.awayWO,
+        round: 0, played: m.homeGoals !== null || m.homeWO || m.awayWO,
         createdAt: m.createdAt,
       }));
 
-      const currentStandings = calculateStandings(phaseTeams, matchesForStandings);
+      const currentPhaseStats = calculateStandings(phaseTeams, matchesForStandings);
 
-      // Add previous phase accumulated stats
-      const cumulativeStandings = currentStandings.map(stat => {
-        const prev = previousStatsMap.get(stat.teamId);
-        if (prev) {
-          const newPlayed = stat.played + prev.played;
-          const newPoints = stat.points + prev.points;
-          const newGoalsFor = stat.goalsFor + prev.goalsFor;
-          const newGoalsAgainst = stat.goalsAgainst + prev.goalsAgainst;
-          return {
-            ...stat,
-            points: newPoints,
-            played: newPlayed,
-            won: stat.won + prev.won,
-            drawn: stat.drawn + prev.drawn,
-            lost: stat.lost + prev.lost,
-            goalsFor: newGoalsFor,
-            goalsAgainst: newGoalsAgainst,
-            goalDifference: newGoalsFor - newGoalsAgainst,
-            gaveWO: stat.gaveWO || prev.gaveWO,
-            woCount: stat.woCount + prev.woCount,
-            pointsPercentage: newPlayed > 0 ? (newPoints / (newPlayed * 3)) * 100 : 0,
-          };
+      // Build cumulative: regular + accumulated knockout + current phase knockout
+      const cumulativeStandings = currentPhaseStats.map(stat => {
+        const regular = regularStats.get(stat.teamId);
+        const prevKnockout = accumulatedKnockoutStats.get(stat.teamId);
+
+        let totalPoints = stat.points;
+        let totalPlayed = stat.played;
+        let totalWon = stat.won;
+        let totalDrawn = stat.drawn;
+        let totalLost = stat.lost;
+        let totalGF = stat.goalsFor;
+        let totalGA = stat.goalsAgainst;
+        let totalWO = stat.woCount;
+        let totalGaveWO = stat.gaveWO;
+
+        if (regular) {
+          totalPoints += regular.points;
+          totalPlayed += regular.played;
+          totalWon += regular.won;
+          totalDrawn += regular.drawn;
+          totalLost += regular.lost;
+          totalGF += regular.goalsFor;
+          totalGA += regular.goalsAgainst;
+          totalWO += regular.woCount;
+          totalGaveWO = totalGaveWO || regular.gaveWO;
         }
-        return stat;
+
+        if (prevKnockout) {
+          totalPoints += prevKnockout.points;
+          totalPlayed += prevKnockout.played;
+          totalWon += prevKnockout.won;
+          totalDrawn += prevKnockout.drawn;
+          totalLost += prevKnockout.lost;
+          totalGF += prevKnockout.goalsFor;
+          totalGA += prevKnockout.goalsAgainst;
+          totalWO += prevKnockout.woCount;
+          totalGaveWO = totalGaveWO || prevKnockout.gaveWO;
+        }
+
+        return {
+          ...stat,
+          points: totalPoints,
+          played: totalPlayed,
+          won: totalWon,
+          drawn: totalDrawn,
+          lost: totalLost,
+          goalsFor: totalGF,
+          goalsAgainst: totalGA,
+          goalDifference: totalGF - totalGA,
+          gaveWO: totalGaveWO,
+          woCount: totalWO,
+          pointsPercentage: totalPlayed > 0 ? (totalPoints / (totalPlayed * 3)) * 100 : 0,
+        };
       });
 
-      // Re-sort after accumulation
       cumulativeStandings.sort((a, b) => {
         if (b.points !== a.points) return b.points - a.points;
         if (b.won !== a.won) return b.won - a.won;
@@ -330,26 +344,35 @@ const KnockoutBracket = ({
       const label = ALL_PHASES.find(p => p.key === phase)?.label || '';
       result.push({ phase, label, standings: cumulativeStandings });
 
-      // Store cumulative stats for next phase
-      const newPrevMap = new Map<string, typeof previousStatsMap extends Map<string, infer V> ? V : never>();
-      cumulativeStandings.forEach(stat => {
-        newPrevMap.set(stat.teamId, {
-          points: stat.points,
-          played: stat.played,
-          won: stat.won,
-          drawn: stat.drawn,
-          lost: stat.lost,
-          goalsFor: stat.goalsFor,
-          goalsAgainst: stat.goalsAgainst,
-          woCount: stat.woCount,
-          gaveWO: stat.gaveWO,
-        });
+      // Accumulate knockout stats for next phase (only this phase's knockout part)
+      const newAccumulated = new Map(accumulatedKnockoutStats);
+      currentPhaseStats.forEach(stat => {
+        const prev = newAccumulated.get(stat.teamId);
+        if (prev) {
+          newAccumulated.set(stat.teamId, {
+            points: prev.points + stat.points,
+            played: prev.played + stat.played,
+            won: prev.won + stat.won,
+            drawn: prev.drawn + stat.drawn,
+            lost: prev.lost + stat.lost,
+            goalsFor: prev.goalsFor + stat.goalsFor,
+            goalsAgainst: prev.goalsAgainst + stat.goalsAgainst,
+            woCount: prev.woCount + stat.woCount,
+            gaveWO: prev.gaveWO || stat.gaveWO,
+          });
+        } else {
+          newAccumulated.set(stat.teamId, {
+            points: stat.points, played: stat.played, won: stat.won, drawn: stat.drawn,
+            lost: stat.lost, goalsFor: stat.goalsFor, goalsAgainst: stat.goalsAgainst,
+            woCount: stat.woCount, gaveWO: stat.gaveWO,
+          });
+        }
       });
-      previousStatsMap = newPrevMap;
+      accumulatedKnockoutStats = newAccumulated;
     }
 
     return result;
-  }, [knockoutMatches, teams]);
+  }, [knockoutMatches, teams, allRegularMatches]);
 
   return (
     <>
@@ -365,8 +388,8 @@ const KnockoutBracket = ({
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <StandingsTable 
-                  standings={phaseStandingsData} 
+                <StandingsTable
+                  standings={phaseStandingsData}
                   title={`Classificação - ${label}`}
                   showPercentageColumn
                 />
@@ -397,8 +420,7 @@ const KnockoutBracket = ({
               <CardContent>
                 <div className={`grid gap-3 ${
                   count === 1 ? 'grid-cols-1 max-w-md mx-auto' :
-                  count <= 2 ? 'grid-cols-1 sm:grid-cols-2 max-w-2xl mx-auto' :
-                  count <= 4 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4' :
+                  count <= 4 ? 'grid-cols-1 sm:grid-cols-2 max-w-2xl mx-auto' :
                   count <= 8 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4' :
                   'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
                 }`}>
@@ -434,36 +456,22 @@ const KnockoutBracket = ({
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>Time 1</Label>
-                <Select
-                  value={formData.homeTeamId}
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, homeTeamId: value }))}
-                >
-                  <SelectTrigger className="h-11">
-                    <SelectValue placeholder="Selecione..." />
-                  </SelectTrigger>
+                <Select value={formData.homeTeamId} onValueChange={(value) => setFormData(prev => ({ ...prev, homeTeamId: value }))}>
+                  <SelectTrigger className="h-11"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                   <SelectContent>
                     {teams.map((team) => (
-                      <SelectItem key={team.id} value={team.id}>
-                        {team.name}
-                      </SelectItem>
+                      <SelectItem key={team.id} value={team.id}>{team.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid gap-2">
                 <Label>Time 2</Label>
-                <Select
-                  value={formData.awayTeamId}
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, awayTeamId: value }))}
-                >
-                  <SelectTrigger className="h-11">
-                    <SelectValue placeholder="Selecione..." />
-                  </SelectTrigger>
+                <Select value={formData.awayTeamId} onValueChange={(value) => setFormData(prev => ({ ...prev, awayTeamId: value }))}>
+                  <SelectTrigger className="h-11"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                   <SelectContent>
                     {teams.map((team) => (
-                      <SelectItem key={team.id} value={team.id}>
-                        {team.name}
-                      </SelectItem>
+                      <SelectItem key={team.id} value={team.id}>{team.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -473,33 +481,15 @@ const KnockoutBracket = ({
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>Gols Time 1</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  value={formData.homeGoals ?? ''}
-                  placeholder="A definir"
-                  onChange={(e) => setFormData(prev => ({
-                    ...prev,
-                    homeGoals: e.target.value === '' ? null : parseInt(e.target.value)
-                  }))}
-                  disabled={formData.homeWO || formData.awayWO}
-                  className="h-11"
-                />
+                <Input type="number" min="0" value={formData.homeGoals ?? ''} placeholder="A definir"
+                  onChange={(e) => setFormData(prev => ({ ...prev, homeGoals: e.target.value === '' ? null : parseInt(e.target.value) }))}
+                  disabled={formData.homeWO || formData.awayWO} className="h-11" />
               </div>
               <div className="grid gap-2">
                 <Label>Gols Time 2</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  value={formData.awayGoals ?? ''}
-                  placeholder="A definir"
-                  onChange={(e) => setFormData(prev => ({
-                    ...prev,
-                    awayGoals: e.target.value === '' ? null : parseInt(e.target.value)
-                  }))}
-                  disabled={formData.homeWO || formData.awayWO}
-                  className="h-11"
-                />
+                <Input type="number" min="0" value={formData.awayGoals ?? ''} placeholder="A definir"
+                  onChange={(e) => setFormData(prev => ({ ...prev, awayGoals: e.target.value === '' ? null : parseInt(e.target.value) }))}
+                  disabled={formData.homeWO || formData.awayWO} className="h-11" />
               </div>
             </div>
 
@@ -507,27 +497,13 @@ const KnockoutBracket = ({
               <p className="text-sm font-medium">W.O. (Walk Over)</p>
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="ko-home-wo"
-                    checked={formData.homeWO}
-                    onCheckedChange={(checked) => setFormData(prev => ({
-                      ...prev,
-                      homeWO: !!checked,
-                      awayWO: checked ? false : prev.awayWO
-                    }))}
-                  />
+                  <Checkbox id="ko-home-wo" checked={formData.homeWO}
+                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, homeWO: !!checked, awayWO: checked ? false : prev.awayWO }))} />
                   <Label htmlFor="ko-home-wo" className="text-sm cursor-pointer">Time 1 deu W.O.</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="ko-away-wo"
-                    checked={formData.awayWO}
-                    onCheckedChange={(checked) => setFormData(prev => ({
-                      ...prev,
-                      awayWO: !!checked,
-                      homeWO: checked ? false : prev.homeWO
-                    }))}
-                  />
+                  <Checkbox id="ko-away-wo" checked={formData.awayWO}
+                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, awayWO: !!checked, homeWO: checked ? false : prev.homeWO }))} />
                   <Label htmlFor="ko-away-wo" className="text-sm cursor-pointer">Time 2 deu W.O.</Label>
                 </div>
               </div>
@@ -535,9 +511,7 @@ const KnockoutBracket = ({
           </div>
 
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-              Cancelar
-            </Button>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
             <Button onClick={handleSubmit} className="bg-gradient-primary hover:opacity-90">
               {editingMatch ? 'Salvar' : 'Criar'}
             </Button>

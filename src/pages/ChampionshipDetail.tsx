@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { ArrowLeft, Trophy, Users, Calendar, Plus, LayoutGrid, Settings, Swords, Download, Percent, Hash } from 'lucide-react';
+import { ArrowLeft, Trophy, Users, Calendar, Plus, LayoutGrid, Settings, Swords, Percent, Hash } from 'lucide-react';
 import StandingsTable from '@/components/championship/StandingsTable';
 import TeamsList from '@/components/championship/TeamsList';
 import RoundsList from '@/components/championship/RoundsList';
@@ -21,8 +21,6 @@ const PHASE_LABELS: Record<string, string> = {
   'semi-finals': 'Semifinais',
   'final': 'Final',
 };
-
-const getPhaseLabel = (phase: string) => PHASE_LABELS[phase] || phase;
 
 const ChampionshipDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -47,6 +45,7 @@ const ChampionshipDetail = () => {
     deleteGameDay,
     addTeamToGameDay,
     removeTeamFromGameDay,
+    updateGameDay,
     createKnockoutMatch,
     updateKnockoutMatch,
     deleteKnockoutMatch,
@@ -72,69 +71,37 @@ const ChampionshipDetail = () => {
     return rounds.filter(r => !r.gameDayId).sort((a, b) => a.number - b.number);
   }, [rounds]);
 
-  // Determine the current active knockout phase (most advanced phase WITH matches)
-  const currentKnockoutPhase = useMemo(() => {
-    if (knockoutMatches.length === 0) return null;
-
-    const phaseOrder: KnockoutPhase[] = ['round-of-16', 'quarter-finals', 'semi-finals', 'final'];
-
-    // Find the most advanced phase that actually has matches created
-    let latestPhaseWithMatches: KnockoutPhase | null = null;
-    for (const phase of phaseOrder) {
-      const phaseMatches = knockoutMatches.filter(m => m.phase === phase);
-      if (phaseMatches.length > 0) {
-        latestPhaseWithMatches = phase;
-      }
-    }
-
-    return latestPhaseWithMatches;
-  }, [knockoutMatches]);
-
   // All game day matches combined
   const allGameDayMatches = useMemo(() => {
     return matches.filter(m => m.gameDayId);
   }, [matches]);
 
-  // Calculate overview standings: game day matches + current knockout phase matches
-  const standings = useMemo(() => {
-    const allMatches: Match[] = [...allGameDayMatches];
+  // All regular matches = game day + general (no knockout)
+  const allRegularMatches = useMemo(() => {
+    return [...allGameDayMatches, ...generalMatches];
+  }, [allGameDayMatches, generalMatches]);
 
-    // Add knockout matches from the current phase if any
-    if (currentKnockoutPhase && knockoutMatches.length > 0) {
-      const phaseMatches = knockoutMatches.filter(m => m.phase === currentKnockoutPhase);
-      const knockoutAsMatches: Match[] = phaseMatches.map(m => ({
-        id: m.id,
-        championshipId: m.championshipId,
-        homeTeamId: m.homeTeamId || '',
-        awayTeamId: m.awayTeamId || '',
-        homeGoals: m.homeGoals,
-        awayGoals: m.awayGoals,
-        homeWO: m.homeWO,
-        awayWO: m.awayWO,
-        round: 0,
-        played: m.homeGoals !== null || m.homeWO || m.awayWO,
-        createdAt: m.createdAt,
-      }));
-      allMatches.push(...knockoutAsMatches);
+  // Overview standings: game days + general rounds ONLY (no knockout)
+  const standings = useMemo(() => {
+    if (allRegularMatches.length === 0) {
+      return calculateStandings(teams, []);
     }
 
-    // Get all teams that participate in these matches
     const teamIds = new Set<string>();
-    allMatches.forEach(m => {
+    allRegularMatches.forEach(m => {
       if (m.homeTeamId) teamIds.add(m.homeTeamId);
       if (m.awayTeamId) teamIds.add(m.awayTeamId);
     });
 
-    // If no matches at all, show all teams
-    if (allMatches.length === 0) {
-      return calculateStandings(teams, []);
-    }
-
     const relevantTeams = teams.filter(t => teamIds.has(t.id));
-    return calculateStandings(relevantTeams, allMatches);
-  }, [teams, allGameDayMatches, knockoutMatches, currentKnockoutPhase]);
+    return calculateStandings(relevantTeams.length > 0 ? relevantTeams : teams, allRegularMatches);
+  }, [teams, allRegularMatches]);
 
   const playedMatchesCount = matches.filter(m => m.homeGoals !== null && m.awayGoals !== null || m.homeWO || m.awayWO).length;
+
+  const handleUpdateGameDayTeams = async (gameDayId: string, teamIds: string[]) => {
+    await updateGameDay(gameDayId, { teamIds });
+  };
 
   if (!championship) {
     return (
@@ -229,10 +196,9 @@ const ChampionshipDetail = () => {
             </TabsList>
           </div>
 
-          {/* Overview Tab - Shows General Rounds and Standings */}
+          {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
             <div className="grid gap-6 lg:grid-cols-2">
-              {/* Standings Card */}
               <Card className="bg-gradient-card border-border/50">
                 <CardHeader>
                   <div className="flex items-center justify-between flex-wrap gap-2">
@@ -242,10 +208,7 @@ const ChampionshipDetail = () => {
                         Classificação Geral
                       </CardTitle>
                       <CardDescription>
-                        {currentKnockoutPhase && knockoutMatches.length > 0
-                          ? `Dias de jogo + Eliminatórias (${getPhaseLabel(currentKnockoutPhase)})`
-                          : 'Baseada nas partidas dos dias de jogo'
-                        }
+                        Dias de jogo + Rodadas gerais
                       </CardDescription>
                     </div>
                     <ToggleGroup type="single" value={standingsMode} onValueChange={(v) => v && setStandingsMode(v)} size="sm" className="bg-muted/50 rounded-lg p-0.5">
@@ -270,8 +233,8 @@ const ChampionshipDetail = () => {
                       </Button>
                     </div>
                   ) : (
-                    <StandingsTable 
-                      standings={standings} 
+                    <StandingsTable
+                      standings={standings}
                       title={`Classificação - ${championship.name}`}
                       championshipName={championship.name}
                       sortByPercentage={standingsMode === 'percentage'}
@@ -280,38 +243,24 @@ const ChampionshipDetail = () => {
                 </CardContent>
               </Card>
 
-              {/* Quick Actions Card */}
               <Card className="bg-gradient-card border-border/50">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Settings className="h-5 w-5 text-primary" />
                     Ações Rápidas
                   </CardTitle>
-                  <CardDescription>
-                    Gerencie seu campeonato
-                  </CardDescription>
+                  <CardDescription>Gerencie seu campeonato</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <Button 
-                    onClick={() => setIsAddTeamOpen(true)} 
-                    className="w-full gap-2 bg-gradient-primary hover:opacity-90"
-                  >
+                  <Button onClick={() => setIsAddTeamOpen(true)} className="w-full gap-2 bg-gradient-primary hover:opacity-90">
                     <Plus className="h-4 w-4" />
                     Adicionar Time
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    className="w-full gap-2"
-                    onClick={() => setActiveMainTab('game-days')}
-                  >
+                  <Button variant="outline" className="w-full gap-2" onClick={() => setActiveMainTab('game-days')}>
                     <Calendar className="h-4 w-4" />
                     Gerenciar Dias de Jogo
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    className="w-full gap-2"
-                    onClick={() => setActiveMainTab('knockout')}
-                  >
+                  <Button variant="outline" className="w-full gap-2" onClick={() => setActiveMainTab('knockout')}>
                     <Swords className="h-4 w-4" />
                     Gerenciar Eliminatórias
                   </Button>
@@ -319,16 +268,13 @@ const ChampionshipDetail = () => {
               </Card>
             </div>
 
-            {/* General Rounds Section */}
             <Card className="bg-gradient-card border-border/50">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <LayoutGrid className="h-5 w-5 text-primary" />
                   Rodadas Gerais
                 </CardTitle>
-                <CardDescription>
-                  Partidas que não estão vinculadas a um dia de jogo específico
-                </CardDescription>
+                <CardDescription>Partidas que não estão vinculadas a um dia de jogo específico</CardDescription>
               </CardHeader>
               <CardContent>
                 <RoundsList
@@ -355,11 +301,11 @@ const ChampionshipDetail = () => {
                   Dias de Jogo
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  Organize partidas por dias (ex: Sábado, Domingo). Cada dia tem sua própria classificação.
+                  Organize partidas por dias. Cada dia tem sua própria classificação.
                 </p>
               </div>
             </div>
-            
+
             <GameDayManager
               qualifyingTeams={championship.qualifyingTeams}
               gameDays={gameDays}
@@ -371,6 +317,7 @@ const ChampionshipDetail = () => {
               onDeleteGameDay={deleteGameDay}
               onAddTeamToGameDay={addTeamToGameDay}
               onRemoveTeamFromGameDay={removeTeamFromGameDay}
+              onUpdateGameDayTeams={handleUpdateGameDayTeams}
               onCreateRound={(name, gameDayId) => createRound(championship.id, name, gameDayId)}
               onDeleteRound={deleteRound}
               onCreateMatch={createMatch}
@@ -387,7 +334,7 @@ const ChampionshipDetail = () => {
                 Fases Eliminatórias
               </h2>
               <p className="text-sm text-muted-foreground">
-                Defina os confrontos de oitavas, quartas, semifinais e final. O vencedor é determinado pelos critérios de desempate.
+                Defina os confrontos de oitavas, quartas, semifinais e final.
               </p>
             </div>
 
@@ -396,6 +343,7 @@ const ChampionshipDetail = () => {
               teams={teams}
               championshipId={championship.id}
               enabledPhases={championship.knockoutPhases || ['round-of-16', 'quarter-finals', 'semi-finals', 'final']}
+              allRegularMatches={allRegularMatches}
               onCreateMatch={createKnockoutMatch}
               onUpdateMatch={updateKnockoutMatch}
               onDeleteMatch={deleteKnockoutMatch}
@@ -424,7 +372,6 @@ const ChampionshipDetail = () => {
         </Tabs>
       </main>
 
-      {/* Dialogs */}
       <AddTeamDialog
         open={isAddTeamOpen}
         onOpenChange={setIsAddTeamOpen}
