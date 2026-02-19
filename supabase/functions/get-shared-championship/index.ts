@@ -14,8 +14,9 @@ Deno.serve(async (req) => {
     const url = new URL(req.url)
     const token = url.searchParams.get('token')
 
-    if (!token) {
-      return new Response(JSON.stringify({ error: 'Token required' }), {
+    // Validate token format: must be exactly 64 hex characters
+    if (!token || !/^[a-f0-9]{64}$/.test(token)) {
+      return new Response(JSON.stringify({ error: 'Invalid token format' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
@@ -79,7 +80,7 @@ Deno.serve(async (req) => {
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
-  } catch (err) {
+  } catch (_err) {
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
