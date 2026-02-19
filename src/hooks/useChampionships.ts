@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Championship, Team, Match, Round, GameDay, KnockoutMatch, KnockoutPhase } from '@/types/championship';
 import { useAuth } from './useAuth';
+import { createTeamSchema, createChampionshipSchema, updateMatchSchema, teamNameSchema, logoUrlSchema, championshipNameSchema, descriptionSchema, goalsSchema, gameDayNameSchema, validateOrThrow } from '@/utils/validation';
+import { z } from 'zod';
 
 function mapChampionship(row: any): Championship {
   return {
@@ -107,11 +109,12 @@ export function useChampionships() {
   // Championship CRUD
   const createChampionship = useCallback(async (data: Omit<Championship, 'id' | 'teamIds' | 'createdAt'>) => {
     if (!user) return null;
+    const validated = validateOrThrow(createChampionshipSchema, data);
     const { data: row, error } = await supabase.from('championships').insert({
       user_id: user.id,
-      name: data.name,
-      start_date: data.startDate || null,
-      description: data.description || null,
+      name: validated.name,
+      start_date: validated.startDate || null,
+      description: validated.description || null,
       team_ids: [],
       game_days: data.gameDays || [],
       knockout_phases: data.knockoutPhases || ['quarter-finals', 'semi-finals', 'final'],
@@ -126,9 +129,9 @@ export function useChampionships() {
 
   const updateChampionship = useCallback(async (id: string, data: Partial<Championship>) => {
     const updateData: any = {};
-    if (data.name !== undefined) updateData.name = data.name;
+    if (data.name !== undefined) updateData.name = validateOrThrow(championshipNameSchema, data.name);
     if (data.startDate !== undefined) updateData.start_date = data.startDate;
-    if (data.description !== undefined) updateData.description = data.description;
+    if (data.description !== undefined) updateData.description = data.description ? validateOrThrow(descriptionSchema, data.description) : null;
     if (data.teamIds !== undefined) updateData.team_ids = data.teamIds;
     if (data.gameDays !== undefined) updateData.game_days = data.gameDays;
     if (data.knockoutPhases !== undefined) updateData.knockout_phases = data.knockoutPhases;
@@ -155,8 +158,9 @@ export function useChampionships() {
   // Team CRUD
   const createTeam = useCallback(async (data: Omit<Team, 'id' | 'createdAt'>) => {
     if (!user) return null;
+    const validated = validateOrThrow(createTeamSchema, data);
     const { data: row, error } = await supabase.from('teams').insert({
-      user_id: user.id, name: data.name, logo: data.logo || null,
+      user_id: user.id, name: validated.name, logo: validated.logo || null,
     }).select().single();
     if (error || !row) return null;
     const mapped = mapTeam(row);
@@ -166,8 +170,8 @@ export function useChampionships() {
 
   const updateTeam = useCallback(async (id: string, data: Partial<Team>) => {
     const updateData: any = {};
-    if (data.name !== undefined) updateData.name = data.name;
-    if (data.logo !== undefined) updateData.logo = data.logo;
+    if (data.name !== undefined) updateData.name = validateOrThrow(teamNameSchema, data.name);
+    if (data.logo !== undefined) updateData.logo = data.logo ? validateOrThrow(logoUrlSchema, data.logo) : null;
     await supabase.from('teams').update(updateData).eq('id', id);
     setTeams(prev => prev.map(t => t.id === id ? { ...t, ...data } : t));
   }, []);
@@ -217,8 +221,9 @@ export function useChampionships() {
   // GameDay CRUD
   const createGameDay = useCallback(async (championshipId: string, name: string) => {
     if (!user) return null;
+    const validatedName = validateOrThrow(gameDayNameSchema, name);
     const { data: row, error } = await supabase.from('game_days').insert({
-      user_id: user.id, championship_id: championshipId, name, team_ids: [],
+      user_id: user.id, championship_id: championshipId, name: validatedName, team_ids: [],
     }).select().single();
     if (error || !row) return null;
     const mapped = mapGameDay(row);
@@ -333,14 +338,23 @@ export function useChampionships() {
   }, [user]);
 
   const updateMatch = useCallback(async (id: string, data: Partial<Match>) => {
+    const validated = validateOrThrow(updateMatchSchema, {
+      homeGoals: data.homeGoals,
+      awayGoals: data.awayGoals,
+      homeWO: data.homeWO,
+      awayWO: data.awayWO,
+      played: data.played,
+      homeTeamId: data.homeTeamId,
+      awayTeamId: data.awayTeamId,
+    });
     const updateData: any = {};
-    if (data.homeGoals !== undefined) updateData.home_goals = data.homeGoals;
-    if (data.awayGoals !== undefined) updateData.away_goals = data.awayGoals;
-    if (data.homeWO !== undefined) updateData.home_wo = data.homeWO;
-    if (data.awayWO !== undefined) updateData.away_wo = data.awayWO;
-    if (data.played !== undefined) updateData.played = data.played;
-    if (data.homeTeamId !== undefined) updateData.home_team_id = data.homeTeamId;
-    if (data.awayTeamId !== undefined) updateData.away_team_id = data.awayTeamId;
+    if (validated.homeGoals !== undefined) updateData.home_goals = validated.homeGoals;
+    if (validated.awayGoals !== undefined) updateData.away_goals = validated.awayGoals;
+    if (validated.homeWO !== undefined) updateData.home_wo = validated.homeWO;
+    if (validated.awayWO !== undefined) updateData.away_wo = validated.awayWO;
+    if (validated.played !== undefined) updateData.played = validated.played;
+    if (validated.homeTeamId !== undefined) updateData.home_team_id = validated.homeTeamId;
+    if (validated.awayTeamId !== undefined) updateData.away_team_id = validated.awayTeamId;
     await supabase.from('matches').update(updateData).eq('id', id);
     setMatches(prev => prev.map(m => m.id === id ? { ...m, ...data } : m));
     // Broadcast update for the match's championship
@@ -387,8 +401,8 @@ export function useChampionships() {
     const updateData: any = {};
     if (data.homeTeamId !== undefined) updateData.home_team_id = data.homeTeamId;
     if (data.awayTeamId !== undefined) updateData.away_team_id = data.awayTeamId;
-    if (data.homeGoals !== undefined) updateData.home_goals = data.homeGoals;
-    if (data.awayGoals !== undefined) updateData.away_goals = data.awayGoals;
+    if (data.homeGoals !== undefined) updateData.home_goals = validateOrThrow(goalsSchema, data.homeGoals);
+    if (data.awayGoals !== undefined) updateData.away_goals = validateOrThrow(goalsSchema, data.awayGoals);
     if (data.homeWO !== undefined) updateData.home_wo = data.homeWO;
     if (data.awayWO !== undefined) updateData.away_wo = data.awayWO;
     if (data.winnerId !== undefined) updateData.winner_id = data.winnerId;
