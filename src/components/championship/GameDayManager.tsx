@@ -19,6 +19,7 @@ interface GameDayManagerProps {
   matches: Match[];
   rounds: Round[];
   championshipId: string;
+  championshipName?: string;
   qualifyingTeams?: Record<string, number>;
   onCreateGameDay: (name: string) => GameDay | Promise<GameDay | null>;
   onDeleteGameDay: (id: string) => void;
@@ -38,6 +39,7 @@ const GameDayManager = ({
   matches,
   rounds,
   championshipId,
+  championshipName,
   qualifyingTeams,
   onCreateGameDay,
   onDeleteGameDay,
@@ -316,6 +318,7 @@ const GameDayManager = ({
                       <StandingsTable
                         standings={standings}
                         title={`Classificação - ${day.name}`}
+                        championshipName={championshipName}
                         showExport={true}
                         qualifyingCount={qualifyingTeams?.[day.name]}
                       />

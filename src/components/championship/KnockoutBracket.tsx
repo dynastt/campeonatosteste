@@ -391,7 +391,6 @@ const KnockoutBracket = ({
                 <StandingsTable
                   standings={phaseStandingsData}
                   title={`Classificação - ${label}`}
-                  showPercentageColumn
                 />
               </CardContent>
             </Card>

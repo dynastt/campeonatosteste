@@ -1,25 +1,92 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useChampionships } from '@/hooks/useChampionships';
 import { calculateStandings } from '@/utils/standings';
 import { KnockoutPhase, Match } from '@/types/championship';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { ArrowLeft, Trophy, Users, Calendar, Plus, LayoutGrid, Settings, Swords, Percent, Hash } from 'lucide-react';
+import { ArrowLeft, Trophy, Users, Calendar, Plus, LayoutGrid, Settings, Swords, Percent, Hash, Share2, Copy, Check, Loader2 } from 'lucide-react';
 import StandingsTable from '@/components/championship/StandingsTable';
 import TeamsList from '@/components/championship/TeamsList';
 import RoundsList from '@/components/championship/RoundsList';
 import AddTeamDialog from '@/components/championship/AddTeamDialog';
 import KnockoutBracket from '@/components/championship/KnockoutBracket';
 import GameDayManager from '@/components/championship/GameDayManager';
+import { toast } from 'sonner';
 
 const PHASE_LABELS: Record<string, string> = {
   'round-of-16': 'Oitavas de Final',
   'quarter-finals': 'Quartas de Final',
   'semi-finals': 'Semifinais',
   'final': 'Final',
+};
+
+const ShareLinkButton = ({ championshipId, userId }: { championshipId: string; userId?: string }) => {
+  const [shareToken, setShareToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!userId) return;
+    supabase.from('championship_shares').select('token').eq('championship_id', championshipId).single()
+      .then(({ data }) => { if (data) setShareToken(data.token); });
+  }, [championshipId, userId]);
+
+  const generateLink = async () => {
+    if (!userId) return;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.from('championship_shares')
+        .insert({ championship_id: championshipId, user_id: userId })
+        .select('token').single();
+      if (error) { toast.error('Erro ao gerar link'); return; }
+      setShareToken(data.token);
+      toast.success('Link gerado!');
+    } finally { setLoading(false); }
+  };
+
+  const copyLink = () => {
+    if (!shareToken) return;
+    const url = `${window.location.origin}/share/${shareToken}`;
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    toast.success('Link copiado!');
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const deleteLink = async () => {
+    if (!shareToken) return;
+    await supabase.from('championship_shares').delete().eq('championship_id', championshipId);
+    setShareToken(null);
+    toast.success('Link removido!');
+  };
+
+  if (!shareToken) {
+    return (
+      <Button variant="outline" className="w-full gap-2" onClick={generateLink} disabled={loading}>
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
+        Gerar Link Público
+      </Button>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex gap-2">
+        <Button variant="outline" className="flex-1 gap-2" onClick={copyLink}>
+          {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+          {copied ? 'Copiado!' : 'Copiar Link'}
+        </Button>
+        <Button variant="destructive" size="icon" onClick={deleteLink} title="Remover link">
+          <Share2 className="h-4 w-4" />
+        </Button>
+      </div>
+      <p className="text-xs text-muted-foreground text-center">Link público ativo • Somente leitura</p>
+    </div>
+  );
 };
 
 const ChampionshipDetail = () => {
@@ -54,6 +121,10 @@ const ChampionshipDetail = () => {
   const [isAddTeamOpen, setIsAddTeamOpen] = useState(false);
   const [activeMainTab, setActiveMainTab] = useState<string>('overview');
   const [standingsMode, setStandingsMode] = useState<string>('points');
+  const [shareToken, setShareToken] = useState<string | null>(null);
+  const [shareLoading, setShareLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const { user } = useAuth();
 
   const championship = getChampionship(id || '');
   const teams = getChampionshipTeams(id || '');
@@ -211,16 +282,14 @@ const ChampionshipDetail = () => {
                         Dias de jogo + Rodadas gerais
                       </CardDescription>
                     </div>
-                    <ToggleGroup type="single" value={standingsMode} onValueChange={(v) => v && setStandingsMode(v)} size="sm" className="bg-muted/50 rounded-lg p-0.5">
-                      <ToggleGroupItem value="points" aria-label="Pontos" className="gap-1 px-3 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
-                        <Hash className="h-3 w-3" />
-                        P
-                      </ToggleGroupItem>
-                      <ToggleGroupItem value="percentage" aria-label="Porcentagem" className="gap-1 px-3 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
-                        <Percent className="h-3 w-3" />
-                        %
-                      </ToggleGroupItem>
-                    </ToggleGroup>
+                    <div className="flex gap-1 bg-muted/50 rounded-lg p-0.5">
+                      <button onClick={() => setStandingsMode('points')} className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${standingsMode === 'points' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                        <Hash className="h-3 w-3" />P
+                      </button>
+                      <button onClick={() => setStandingsMode('percentage')} className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${standingsMode === 'percentage' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                        <Percent className="h-3 w-3" />%
+                      </button>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -264,6 +333,7 @@ const ChampionshipDetail = () => {
                     <Swords className="h-4 w-4" />
                     Gerenciar Eliminatórias
                   </Button>
+                  <ShareLinkButton championshipId={championship.id} userId={user?.id} />
                 </CardContent>
               </Card>
             </div>
@@ -313,6 +383,7 @@ const ChampionshipDetail = () => {
               matches={matches}
               rounds={rounds}
               championshipId={championship.id}
+              championshipName={championship.name}
               onCreateGameDay={(name) => createGameDay(championship.id, name)}
               onDeleteGameDay={deleteGameDay}
               onAddTeamToGameDay={addTeamToGameDay}

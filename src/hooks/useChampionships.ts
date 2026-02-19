@@ -95,6 +95,15 @@ export function useChampionships() {
     fetchAll();
   }, [user]);
 
+  // Broadcast to shared channel when data changes
+  const broadcastUpdate = useCallback((championshipId: string) => {
+    supabase.channel(`shared:${championshipId}`).send({
+      type: 'broadcast',
+      event: 'data_updated',
+      payload: {},
+    });
+  }, []);
+
   // Championship CRUD
   const createChampionship = useCallback(async (data: Omit<Championship, 'id' | 'teamIds' | 'createdAt'>) => {
     if (!user) return null;
@@ -127,7 +136,8 @@ export function useChampionships() {
     if (data.qualifyingTeams !== undefined) updateData.qualifying_teams = data.qualifyingTeams;
     await supabase.from('championships').update(updateData).eq('id', id);
     setChampionships(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
-  }, []);
+    broadcastUpdate(id);
+  }, [broadcastUpdate]);
 
   const deleteChampionship = useCallback(async (id: string) => {
     await supabase.from('championships').delete().eq('id', id);
@@ -333,7 +343,10 @@ export function useChampionships() {
     if (data.awayTeamId !== undefined) updateData.away_team_id = data.awayTeamId;
     await supabase.from('matches').update(updateData).eq('id', id);
     setMatches(prev => prev.map(m => m.id === id ? { ...m, ...data } : m));
-  }, []);
+    // Broadcast update for the match's championship
+    const match = matches.find(m => m.id === id);
+    if (match) broadcastUpdate(match.championshipId);
+  }, [matches, broadcastUpdate]);
 
   const deleteMatch = useCallback(async (id: string) => {
     await supabase.from('matches').delete().eq('id', id);
@@ -381,7 +394,9 @@ export function useChampionships() {
     if (data.winnerId !== undefined) updateData.winner_id = data.winnerId;
     await supabase.from('knockout_matches').update(updateData).eq('id', id);
     setKnockoutMatches(prev => prev.map(m => m.id === id ? { ...m, ...data } : m));
-  }, []);
+    const km = knockoutMatches.find(m => m.id === id);
+    if (km) broadcastUpdate(km.championshipId);
+  }, [knockoutMatches, broadcastUpdate]);
 
   const deleteKnockoutMatch = useCallback(async (id: string) => {
     await supabase.from('knockout_matches').delete().eq('id', id);
