@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Trash2, Users, Calendar, Sparkles } from 'lucide-react';
+import { Plus, Trash2, Users, Calendar, Sparkles, Hash, Percent } from 'lucide-react';
 import { toast } from 'sonner';
 import RoundsList from './RoundsList';
 import StandingsTable from './StandingsTable';
@@ -58,6 +58,7 @@ const GameDayManager = ({
   const [activeTab, setActiveTab] = useState<string>('');
   const [localSelectedTeams, setLocalSelectedTeams] = useState<Set<string>>(new Set());
   const [selectedDays, setSelectedDays] = useState<Set<string>>(new Set());
+  const [gameDayStandingsMode, setGameDayStandingsMode] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (gameDays.length > 0 && !activeTab) {
@@ -312,7 +313,17 @@ const GameDayManager = ({
                 <TabsContent value="standings" className="mt-4">
                   <Card className="bg-gradient-card border-border/50">
                     <CardHeader>
-                      <CardTitle className="text-lg">Classificação - {day.name}</CardTitle>
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <CardTitle className="text-lg">Classificação - {day.name}</CardTitle>
+                        <div className="flex gap-1 bg-muted/50 rounded-lg p-0.5">
+                          <button onClick={() => setGameDayStandingsMode(prev => ({ ...prev, [day.id]: 'points' }))} className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${(gameDayStandingsMode[day.id] || 'points') === 'points' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                            <Hash className="h-3 w-3" />P
+                          </button>
+                          <button onClick={() => setGameDayStandingsMode(prev => ({ ...prev, [day.id]: 'percentage' }))} className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${(gameDayStandingsMode[day.id] || 'points') === 'percentage' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                            <Percent className="h-3 w-3" />%
+                          </button>
+                        </div>
+                      </div>
                     </CardHeader>
                     <CardContent>
                       <StandingsTable
@@ -321,6 +332,7 @@ const GameDayManager = ({
                         championshipName={championshipName}
                         showExport={true}
                         qualifyingCount={qualifyingTeams?.[day.name]}
+                        sortByPercentage={(gameDayStandingsMode[day.id] || 'points') === 'percentage'}
                       />
                     </CardContent>
                   </Card>
