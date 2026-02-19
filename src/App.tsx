@@ -7,6 +7,8 @@ import { useAuth } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import ChampionshipDetail from "./pages/ChampionshipDetail";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
+import SharedChampionship from "./pages/SharedChampionship";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +28,8 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/auth" element={<Auth />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/share/:token" element={<SharedChampionship />} />
           <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
           <Route path="/championship/:id" element={<ProtectedRoute><ChampionshipDetail /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />

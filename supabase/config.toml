@@ -1,1 +1,4 @@
 project_id = "dbizcergbovfknbwtbtv"
+
+[functions.get-shared-championship]
+verify_jwt = false
