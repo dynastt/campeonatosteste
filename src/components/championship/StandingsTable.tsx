@@ -99,22 +99,22 @@ const StandingsTable = ({ standings, title = 'Classificação', championshipName
         </div>
       )}
 
-      <div className="rounded-xl border border-border/50">
+      <div className="rounded-xl border border-border/50 overflow-x-auto">
         {title && <h3 className="sr-only">{title}</h3>}
-        <Table className="table-fixed w-full">
+        <Table className="w-full">
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
-              <TableHead className="w-10 text-center font-semibold p-1">#</TableHead>
-              <TableHead className="font-semibold p-1">Time</TableHead>
-              <TableHead className="text-center w-10 font-semibold p-1">P</TableHead>
-              <TableHead className="text-center w-12 font-semibold p-1">%</TableHead>
-              <TableHead className="text-center w-8 font-semibold p-1">J</TableHead>
-              <TableHead className="text-center w-8 font-semibold p-1">V</TableHead>
-              <TableHead className="text-center w-8 font-semibold p-1">E</TableHead>
-              <TableHead className="text-center w-8 font-semibold p-1">D</TableHead>
-              <TableHead className="text-center w-8 font-semibold p-1">GP</TableHead>
-              <TableHead className="text-center w-8 font-semibold p-1">GC</TableHead>
-              <TableHead className="text-center w-10 font-semibold p-1">SG</TableHead>
+              <TableHead className="w-8 sm:w-10 text-center font-semibold px-1 py-2">#</TableHead>
+              <TableHead className="font-semibold px-1 py-2 min-w-[80px]">Time</TableHead>
+              <TableHead className="text-center w-8 sm:w-10 font-semibold px-1 py-2">P</TableHead>
+              <TableHead className="text-center w-10 sm:w-12 font-semibold px-1 py-2">%</TableHead>
+              <TableHead className="text-center w-7 sm:w-8 font-semibold px-1 py-2">J</TableHead>
+              <TableHead className="text-center w-7 sm:w-8 font-semibold px-1 py-2">V</TableHead>
+              <TableHead className="text-center w-7 sm:w-8 font-semibold px-1 py-2">E</TableHead>
+              <TableHead className="text-center w-7 sm:w-8 font-semibold px-1 py-2">D</TableHead>
+              <TableHead className="text-center w-7 sm:w-8 font-semibold px-1 py-2 hidden sm:table-cell">GP</TableHead>
+              <TableHead className="text-center w-7 sm:w-8 font-semibold px-1 py-2 hidden sm:table-cell">GC</TableHead>
+              <TableHead className="text-center w-8 sm:w-10 font-semibold px-1 py-2">SG</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -126,38 +126,38 @@ const StandingsTable = ({ standings, title = 'Classificação', championshipName
                   key={stat.teamId}
                   className={`transition-colors hover:bg-muted/50 ${isQualifying ? 'bg-green-500/10 hover:bg-green-500/15' : ''}`}
                 >
-                  <TableCell className="text-center p-1">
+                  <TableCell className="text-center px-1 py-1.5">
                     {index === 0 && (
-                      <div className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-gradient-accent shadow-sm">
-                        <Trophy className="h-3 w-3 text-accent-foreground" />
+                      <div className="inline-flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded-full bg-gradient-accent shadow-sm">
+                        <Trophy className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-accent-foreground" />
                       </div>
                     )}
                     {index === 1 && (
-                      <div className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-gray-300 dark:bg-gray-600 shadow-sm">
-                        <Medal className="h-3 w-3 text-gray-700 dark:text-gray-200" />
+                      <div className="inline-flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded-full bg-gray-300 dark:bg-gray-600 shadow-sm">
+                        <Medal className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-gray-700 dark:text-gray-200" />
                       </div>
                     )}
                     {index === 2 && (
-                      <div className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-700 shadow-sm">
-                        <Medal className="h-3 w-3 text-amber-100" />
+                      <div className="inline-flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded-full bg-amber-700 shadow-sm">
+                        <Medal className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-amber-100" />
                       </div>
                     )}
                     {index > 2 && (
-                      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-muted text-muted-foreground text-xs font-medium">
+                      <span className="inline-flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded-full bg-muted text-muted-foreground text-[10px] sm:text-xs font-medium">
                         {index + 1}
                       </span>
                     )}
                   </TableCell>
-                  <TableCell className="p-1">
-                    <div className="flex items-center gap-1.5 min-w-0">
+                  <TableCell className="px-1 py-1.5">
+                    <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
                       {stat.team.logo ? (
-                        <img src={stat.team.logo} alt={stat.team.name} className="h-6 w-6 rounded-md object-cover flex-shrink-0" />
+                        <img src={stat.team.logo} alt={stat.team.name} className="h-5 w-5 sm:h-6 sm:w-6 rounded-md object-cover flex-shrink-0" />
                       ) : (
-                        <div className="h-6 w-6 rounded-md bg-gradient-primary/10 flex items-center justify-center text-[10px] font-bold text-primary flex-shrink-0">
+                        <div className="h-5 w-5 sm:h-6 sm:w-6 rounded-md bg-gradient-primary/10 flex items-center justify-center text-[9px] sm:text-[10px] font-bold text-primary flex-shrink-0">
                           {stat.team.name.charAt(0)}
                         </div>
                       )}
-                      <span className="font-medium text-xs truncate">{stat.team.name}</span>
+                      <span className="font-medium text-[11px] sm:text-xs truncate max-w-[60px] sm:max-w-none">{stat.team.name}</span>
                       {stat.gaveWO && (
                         <AlertTriangle className="h-3 w-3 text-destructive flex-shrink-0" />
                       )}
@@ -166,19 +166,19 @@ const StandingsTable = ({ standings, title = 'Classificação', championshipName
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className={`text-center font-bold text-sm p-1 ${sortByPercentage ? 'text-foreground' : 'text-green-500'}`}>
+                  <TableCell className={`text-center font-bold text-xs sm:text-sm px-1 py-1.5 ${sortByPercentage ? 'text-foreground' : 'text-green-500'}`}>
                     {stat.points}
                   </TableCell>
-                  <TableCell className={`text-center font-bold text-sm p-1 ${sortByPercentage ? 'text-green-500' : 'text-foreground'}`}>
+                  <TableCell className={`text-center font-bold text-xs sm:text-sm px-1 py-1.5 ${sortByPercentage ? 'text-green-500' : 'text-foreground'}`}>
                     {stat.pointsPercentage.toFixed(0)}%
                   </TableCell>
-                  <TableCell className="text-center text-xs p-1">{stat.played}</TableCell>
-                  <TableCell className="text-center text-xs p-1">{stat.won}</TableCell>
-                  <TableCell className="text-center text-xs text-muted-foreground p-1">{stat.drawn}</TableCell>
-                  <TableCell className="text-center text-xs p-1">{stat.lost}</TableCell>
-                  <TableCell className="text-center text-xs p-1">{stat.goalsFor}</TableCell>
-                  <TableCell className="text-center text-xs p-1">{stat.goalsAgainst}</TableCell>
-                  <TableCell className={`text-center text-xs font-medium p-1 ${stat.goalDifference > 0 ? 'text-green-600 dark:text-green-400' : stat.goalDifference < 0 ? 'text-red-600 dark:text-red-400' : ''}`}>
+                  <TableCell className="text-center text-[11px] sm:text-xs px-1 py-1.5">{stat.played}</TableCell>
+                  <TableCell className="text-center text-[11px] sm:text-xs px-1 py-1.5">{stat.won}</TableCell>
+                  <TableCell className="text-center text-[11px] sm:text-xs text-muted-foreground px-1 py-1.5">{stat.drawn}</TableCell>
+                  <TableCell className="text-center text-[11px] sm:text-xs px-1 py-1.5">{stat.lost}</TableCell>
+                  <TableCell className="text-center text-[11px] sm:text-xs px-1 py-1.5 hidden sm:table-cell">{stat.goalsFor}</TableCell>
+                  <TableCell className="text-center text-[11px] sm:text-xs px-1 py-1.5 hidden sm:table-cell">{stat.goalsAgainst}</TableCell>
+                  <TableCell className={`text-center text-[11px] sm:text-xs font-medium px-1 py-1.5 ${stat.goalDifference > 0 ? 'text-green-600 dark:text-green-400' : stat.goalDifference < 0 ? 'text-red-600 dark:text-red-400' : ''}`}>
                     {stat.goalDifference > 0 ? '+' : ''}{stat.goalDifference}
                   </TableCell>
                 </TableRow>
@@ -188,8 +188,8 @@ const StandingsTable = ({ standings, title = 'Classificação', championshipName
         </Table>
       </div>
 
-      <div className="text-xs text-muted-foreground space-y-1 px-1">
-        <p><strong>Legenda:</strong> P = Pontos, % = Aproveitamento, J = Jogos, V = Vitórias, E = Empates, D = Derrotas, GP = Gols Pró, GC = Gols Contra, SG = Saldo de Gols</p>
+      <div className="text-[10px] sm:text-xs text-muted-foreground space-y-1 px-1">
+        <p><strong>Legenda:</strong> P = Pontos, % = Aproveitamento, J = Jogos, V = Vitórias, E = Empates, D = Derrotas, <span className="hidden sm:inline">GP = Gols Pró, GC = Gols Contra, </span>SG = Saldo de Gols</p>
         <p><strong>Critérios de desempate:</strong> 1º Vitórias, 2º Não ter dado W.O., 3º Menos gols sofridos, 4º Saldo de gols, 5º Confronto direto</p>
         <p className="text-primary/70"><strong>{sortByPercentage ? '% em destaque' : 'P em destaque'}</strong></p>
       </div>

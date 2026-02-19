@@ -63,6 +63,7 @@ const SharedChampionship = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [activeGameDay, setActiveGameDay] = useState('');
   const [standingsMode, setStandingsMode] = useState<string>('points');
+  const [gameDayStandingsMode, setGameDayStandingsMode] = useState<Record<string, string>>({});
 
   const fetchData = useCallback(async () => {
     if (!token) return;
@@ -235,12 +236,12 @@ const SharedChampionship = () => {
                       <div key={round.id} className="space-y-2">
                         <h4 className="text-sm font-semibold text-muted-foreground">{round.name || `Rodada ${round.number}`}</h4>
                         {roundMatches.map(match => (
-                          <div key={match.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/30">
-                            <span className="text-sm font-medium truncate flex-1 text-right">{getTeamName(match.homeTeamId)}</span>
-                            <span className="mx-3 text-sm font-bold text-primary min-w-[50px] text-center">
+                          <div key={match.id} className="flex items-center justify-between p-2 sm:p-3 rounded-lg bg-muted/30 border border-border/30">
+                            <span className="text-xs sm:text-sm font-medium truncate flex-1 text-right">{getTeamName(match.homeTeamId)}</span>
+                            <span className="mx-2 sm:mx-3 text-xs sm:text-sm font-bold text-primary min-w-[40px] sm:min-w-[50px] text-center whitespace-nowrap">
                               {match.homeGoals !== null ? `${match.homeGoals} x ${match.awayGoals}` : match.homeWO ? 'W.O.' : match.awayWO ? 'W.O.' : '— x —'}
                             </span>
-                            <span className="text-sm font-medium truncate flex-1">{getTeamName(match.awayTeamId)}</span>
+                            <span className="text-xs sm:text-sm font-medium truncate flex-1">{getTeamName(match.awayTeamId)}</span>
                           </div>
                         ))}
                       </div>
@@ -255,13 +256,15 @@ const SharedChampionship = () => {
           <TabsContent value="game-days" className="space-y-4">
             {gameDays.length > 0 && (
               <Tabs value={activeGameDay} onValueChange={setActiveGameDay}>
-                <TabsList className="inline-flex w-auto h-auto p-1 bg-muted/50 mb-4">
-                  {gameDays.map(day => (
-                    <TabsTrigger key={day.id} value={day.id} className="gap-2 px-4 py-2.5">
-                      {day.name} <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">{day.teamIds.length}</span>
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
+                <div className="overflow-x-auto -mx-4 px-4">
+                  <TabsList className="inline-flex w-auto h-auto p-1 bg-muted/50 mb-4">
+                    {gameDays.map(day => (
+                      <TabsTrigger key={day.id} value={day.id} className="gap-1.5 px-3 sm:px-4 py-2.5 text-sm">
+                        {day.name} <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">{day.teamIds.length}</span>
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </div>
                 {gameDays.map(day => {
                   const dayTeams = teams.filter(t => day.teamIds.includes(t.id));
                   const dayMatches = matches.filter(m => m.gameDayId === day.id);
@@ -270,9 +273,17 @@ const SharedChampionship = () => {
                   return (
                     <TabsContent key={day.id} value={day.id} className="space-y-4">
                       <Card className="bg-gradient-card border-border/50">
-                        <CardHeader><CardTitle className="text-lg">{day.name} - Classificação</CardTitle></CardHeader>
+                        <CardHeader>
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <CardTitle className="text-lg">{day.name} - Classificação</CardTitle>
+                            <div className="flex gap-1 bg-muted/50 rounded-lg p-0.5">
+                              <button onClick={() => setGameDayStandingsMode(prev => ({ ...prev, [day.id]: 'points' }))} className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${(gameDayStandingsMode[day.id] || 'points') === 'points' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}>P</button>
+                              <button onClick={() => setGameDayStandingsMode(prev => ({ ...prev, [day.id]: 'percentage' }))} className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${(gameDayStandingsMode[day.id] || 'points') === 'percentage' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}>%</button>
+                            </div>
+                          </div>
+                        </CardHeader>
                         <CardContent>
-                          <StandingsTable standings={dayStandings} title={`Classificação - ${day.name}`} championshipName={championship.name} showExport={false} qualifyingCount={championship.qualifyingTeams?.[day.name]} />
+                          <StandingsTable standings={dayStandings} title={`Classificação - ${day.name}`} championshipName={championship.name} showExport={false} qualifyingCount={championship.qualifyingTeams?.[day.name]} sortByPercentage={(gameDayStandingsMode[day.id] || 'points') === 'percentage'} />
                         </CardContent>
                       </Card>
                       {dayRounds.length > 0 && (
@@ -285,12 +296,12 @@ const SharedChampionship = () => {
                                 <div key={round.id} className="space-y-2">
                                   <h4 className="text-sm font-semibold text-muted-foreground">{round.name || `Rodada ${round.number}`}</h4>
                                   {roundMatches.map(match => (
-                                    <div key={match.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/30">
-                                      <span className="text-sm font-medium truncate flex-1 text-right">{getTeamName(match.homeTeamId)}</span>
-                                      <span className="mx-3 text-sm font-bold text-primary min-w-[50px] text-center">
+                                    <div key={match.id} className="flex items-center justify-between p-2 sm:p-3 rounded-lg bg-muted/30 border border-border/30">
+                                      <span className="text-xs sm:text-sm font-medium truncate flex-1 text-right">{getTeamName(match.homeTeamId)}</span>
+                                      <span className="mx-2 sm:mx-3 text-xs sm:text-sm font-bold text-primary min-w-[40px] sm:min-w-[50px] text-center whitespace-nowrap">
                                         {match.homeGoals !== null ? `${match.homeGoals} x ${match.awayGoals}` : match.homeWO ? 'W.O.' : match.awayWO ? 'W.O.' : '— x —'}
                                       </span>
-                                      <span className="text-sm font-medium truncate flex-1">{getTeamName(match.awayTeamId)}</span>
+                                      <span className="text-xs sm:text-sm font-medium truncate flex-1">{getTeamName(match.awayTeamId)}</span>
                                     </div>
                                   ))}
                                 </div>
@@ -316,14 +327,14 @@ const SharedChampionship = () => {
                   <CardHeader><CardTitle className="flex items-center gap-2"><Swords className="h-5 w-5 text-primary" />{PHASE_LABELS[phase]}</CardTitle></CardHeader>
                   <CardContent className="space-y-3">
                     {phaseMatches.map(match => (
-                      <div key={match.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/30">
-                        <span className={`text-sm font-medium truncate flex-1 text-right ${match.winnerId === match.homeTeamId ? 'text-primary font-bold' : ''}`}>
+                      <div key={match.id} className="flex items-center justify-between p-2 sm:p-3 rounded-lg bg-muted/30 border border-border/30">
+                        <span className={`text-xs sm:text-sm font-medium truncate flex-1 text-right ${match.winnerId === match.homeTeamId ? 'text-primary font-bold' : ''}`}>
                           {getTeamName(match.homeTeamId)}
                         </span>
-                        <span className="mx-3 text-sm font-bold text-primary min-w-[50px] text-center">
+                        <span className="mx-2 sm:mx-3 text-xs sm:text-sm font-bold text-primary min-w-[40px] sm:min-w-[50px] text-center whitespace-nowrap">
                           {match.homeGoals !== null ? `${match.homeGoals} x ${match.awayGoals}` : '— x —'}
                         </span>
-                        <span className={`text-sm font-medium truncate flex-1 ${match.winnerId === match.awayTeamId ? 'text-primary font-bold' : ''}`}>
+                        <span className={`text-xs sm:text-sm font-medium truncate flex-1 ${match.winnerId === match.awayTeamId ? 'text-primary font-bold' : ''}`}>
                           {getTeamName(match.awayTeamId)}
                         </span>
                       </div>
