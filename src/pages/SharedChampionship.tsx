@@ -5,8 +5,9 @@ import { Championship, Team, Match, Round, GameDay, KnockoutMatch, KnockoutPhase
 import { calculateStandings } from '@/utils/standings';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Trophy, Users, Calendar, LayoutGrid, Swords, Loader2, LinkIcon } from 'lucide-react';
+import { Trophy, Users, Calendar, LayoutGrid, Swords, Loader2, LinkIcon, Shield } from 'lucide-react';
 import StandingsTable from '@/components/championship/StandingsTable';
+import logoLffc from '@/assets/logo-lffc.png';
 
 const PHASE_LABELS: Record<string, string> = {
   'round-of-16': 'Oitavas de Final',
@@ -160,9 +161,7 @@ const SharedChampionship = () => {
         <div className="container mx-auto px-4 py-4 sm:py-6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div className="flex items-center gap-3 sm:gap-4">
-              <div className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-2xl bg-gradient-primary text-primary-foreground shadow-lg glow-primary">
-                <Trophy className="h-6 w-6 sm:h-7 sm:w-7" />
-              </div>
+              <img src={logoLffc} alt="LFFC" className="h-12 w-12 sm:h-14 sm:w-14 object-contain" />
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">{championship.name}</h1>
                 {championship.description && <p className="text-xs sm:text-sm text-muted-foreground line-clamp-1">{championship.description}</p>}
@@ -200,6 +199,9 @@ const SharedChampionship = () => {
                   <Swords className="h-4 w-4" /><span className="hidden sm:inline">Eliminatórias</span><span className="sm:hidden">Mata-mata</span>
                 </TabsTrigger>
               )}
+              <TabsTrigger value="teams" className="gap-2 px-3 sm:px-4 py-2.5 text-sm">
+                <Users className="h-4 w-4" /><span className="hidden sm:inline">Times</span><span className="sm:hidden">Times</span>
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -343,6 +345,31 @@ const SharedChampionship = () => {
                 </Card>
               );
             })}
+          </TabsContent>
+
+          {/* Teams */}
+          <TabsContent value="teams" className="space-y-4">
+            <Card className="bg-gradient-card border-border/50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Users className="h-5 w-5 text-primary" />Times ({teams.length})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {teams.map(team => (
+                    <div key={team.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border/30">
+                      {team.logo ? (
+                        <img src={team.logo} alt={team.name} className="h-8 w-8 rounded-full object-cover" />
+                      ) : (
+                        <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center">
+                          <Shield className="h-4 w-4 text-primary" />
+                        </div>
+                      )}
+                      <span className="text-sm font-medium">{team.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </main>

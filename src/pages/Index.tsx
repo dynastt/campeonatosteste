@@ -11,8 +11,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Trophy, Plus, Calendar, Users, Pencil, Trash2, Sparkles, Swords, LogOut } from 'lucide-react';
+import { Plus, Calendar, Users, Pencil, Trash2, Sparkles, Swords, LogOut, Trophy } from 'lucide-react';
 import { toast } from 'sonner';
+import logoLffc from '@/assets/logo-lffc.png';
 
 const AVAILABLE_PHASES: { key: KnockoutPhase; label: string }[] = [
   { key: 'round-of-16', label: 'Oitavas de Final' },
@@ -230,17 +231,10 @@ const Index = () => {
         <div className="container mx-auto px-4 py-4 sm:py-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3 sm:gap-4">
-              <div className="relative">
-                <div className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-2xl bg-gradient-primary text-primary-foreground shadow-lg glow-primary">
-                  <Trophy className="h-6 w-6 sm:h-7 sm:w-7" />
-                </div>
-                <div className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-gradient-accent flex items-center justify-center">
-                  <Sparkles className="h-2.5 w-2.5 text-accent-foreground" />
-                </div>
-              </div>
+              <img src={logoLffc} alt="LFFC" className="h-12 w-12 sm:h-14 sm:w-14 object-contain" />
               <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">
-                  Gerenciador de Campeonatos
+                <h1 className="text-lg sm:text-xl font-bold text-foreground tracking-tight leading-tight">
+                  LIGA FRANCANA DE FUTEBOL DE CHÁCARA
                 </h1>
                 <p className="text-xs sm:text-sm text-muted-foreground">
                   Organize seus torneios de futebol
