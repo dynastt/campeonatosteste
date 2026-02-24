@@ -50,8 +50,10 @@ const ShareLinkButton = ({ championshipId, userId }: { championshipId: string; u
 
   const copyLink = () => {
     if (!shareData) return;
-    // Use clean app URL for sharing
-    const appUrl = window.location.origin;
+    // Use the published app URL for clean sharing links
+    const appUrl = import.meta.env.PROD 
+      ? 'https://campeonatosteste.lovable.app' 
+      : window.location.origin;
     const url = `${appUrl}/share/${shareData.short_code}`;
     navigator.clipboard.writeText(url);
     setCopied(true);
