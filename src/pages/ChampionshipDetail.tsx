@@ -25,14 +25,14 @@ const PHASE_LABELS: Record<string, string> = {
 };
 
 const ShareLinkButton = ({ championshipId, userId }: { championshipId: string; userId?: string }) => {
-  const [shareToken, setShareToken] = useState<string | null>(null);
+  const [shareData, setShareData] = useState<{ token: string; short_code: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
-    supabase.from('championship_shares').select('token').eq('championship_id', championshipId).single()
-      .then(({ data }) => { if (data) setShareToken(data.token); });
+    supabase.from('championship_shares').select('token, short_code').eq('championship_id', championshipId).single()
+      .then(({ data }) => { if (data) setShareData(data as any); });
   }, [championshipId, userId]);
 
   const generateLink = async () => {
@@ -41,16 +41,18 @@ const ShareLinkButton = ({ championshipId, userId }: { championshipId: string; u
     try {
       const { data, error } = await supabase.from('championship_shares')
         .insert({ championship_id: championshipId, user_id: userId })
-        .select('token').single();
+        .select('token, short_code').single();
       if (error) { toast.error('Erro ao gerar link'); return; }
-      setShareToken(data.token);
+      setShareData(data as any);
       toast.success('Link gerado!');
     } finally { setLoading(false); }
   };
 
   const copyLink = () => {
-    if (!shareToken) return;
-    const url = `${window.location.origin}/share/${shareToken}`;
+    if (!shareData) return;
+    // Use the edge function URL for WhatsApp OG embed support
+    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+    const url = `https://${projectId}.supabase.co/functions/v1/share-page?c=${shareData.short_code}`;
     navigator.clipboard.writeText(url);
     setCopied(true);
     toast.success('Link copiado!');
@@ -58,13 +60,13 @@ const ShareLinkButton = ({ championshipId, userId }: { championshipId: string; u
   };
 
   const deleteLink = async () => {
-    if (!shareToken) return;
+    if (!shareData) return;
     await supabase.from('championship_shares').delete().eq('championship_id', championshipId);
-    setShareToken(null);
+    setShareData(null);
     toast.success('Link removido!');
   };
 
-  if (!shareToken) {
+  if (!shareData) {
     return (
       <Button variant="outline" className="w-full gap-2" onClick={generateLink} disabled={loading}>
         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}

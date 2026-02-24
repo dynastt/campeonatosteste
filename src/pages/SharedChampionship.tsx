@@ -71,8 +71,11 @@ const SharedChampionship = () => {
     if (!token) return;
     try {
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      // Determine if it's a short code (<=8 chars alphanumeric) or old token (64 hex chars)
+      const isShortCode = token.length <= 8;
+      const paramName = isShortCode ? 'code' : 'token';
       const res = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/get-shared-championship?token=${encodeURIComponent(token)}`,
+        `https://${projectId}.supabase.co/functions/v1/get-shared-championship?${paramName}=${encodeURIComponent(token)}`,
         { headers: { 'Content-Type': 'application/json' } }
       );
       const data = await res.json();

@@ -13,10 +13,23 @@ Deno.serve(async (req) => {
   try {
     const url = new URL(req.url)
     const token = url.searchParams.get('token')
+    const shortCode = url.searchParams.get('code')
 
-    // Validate token format: must be exactly 64 hex characters
-    if (!token || !/^[a-f0-9]{64}$/.test(token)) {
+    // Validate input - accept either token or short_code
+    if (!token && !shortCode) {
+      return new Response(JSON.stringify({ error: 'Token or code required' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    if (token && !/^[a-f0-9]{64}$/.test(token)) {
       return new Response(JSON.stringify({ error: 'Invalid token format' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    if (shortCode && !/^[a-z0-9]{6,8}$/i.test(shortCode)) {
+      return new Response(JSON.stringify({ error: 'Invalid code format' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
@@ -26,12 +39,14 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
-    // Validate token
-    const { data: share, error: shareError } = await supabase
-      .from('championship_shares')
-      .select('championship_id')
-      .eq('token', token)
-      .single()
+    // Validate token or short_code
+    let query = supabase.from('championship_shares').select('championship_id')
+    if (shortCode) {
+      query = query.eq('short_code', shortCode)
+    } else {
+      query = query.eq('token', token!)
+    }
+    const { data: share, error: shareError } = await query.single()
 
     if (shareError || !share) {
       return new Response(JSON.stringify({ error: 'Invalid or expired link' }), {

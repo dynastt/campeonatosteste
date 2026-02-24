@@ -2,3 +2,6 @@ project_id = "dbizcergbovfknbwtbtv"
 
 [functions.get-shared-championship]
 verify_jwt = false
+
+[functions.share-page]
+verify_jwt = false
