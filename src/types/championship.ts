@@ -16,7 +16,9 @@ export interface Championship {
   gameDays: string[];
   knockoutPhases: KnockoutPhase[];
   gameDayNames?: string[];
-  qualifyingTeams?: Record<string, number>; // gameDayName -> number of qualifying teams
+  qualifyingTeams?: Record<string, number>;
+  logo?: string;
+  deletedAt?: string;
   createdAt: string;
 }
 

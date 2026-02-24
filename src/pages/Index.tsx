@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useChampionships } from '@/hooks/useChampionships';
 import { useAuth } from '@/hooks/useAuth';
 import { KnockoutPhase } from '@/types/championship';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -11,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Plus, Calendar, Users, Pencil, Trash2, Sparkles, Swords, LogOut, Trophy } from 'lucide-react';
+import { Plus, Calendar, Users, Pencil, Trash2, Sparkles, Swords, LogOut, Trophy, RotateCcw, Archive, ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import logoLffc from '@/assets/logo-lffc.png';
 
@@ -25,10 +26,14 @@ const AVAILABLE_PHASES: { key: KnockoutPhase; label: string }[] = [
 const AVAILABLE_GAME_DAYS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
 
 const Index = () => {
-  const { championships, createChampionship, updateChampionship, deleteChampionship, getChampionshipTeams, getChampionshipMatches, getChampionshipGameDays, createGameDay, deleteGameDay } = useChampionships();
+  const { championships, createChampionship, updateChampionship, deleteChampionship, restoreChampionship, permanentDeleteChampionship, getChampionshipTeams, getChampionshipMatches, getChampionshipGameDays, createGameDay, deleteGameDay } = useChampionships();
   const { signOut, user } = useAuth();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingChampionship, setEditingChampionship] = useState<string | null>(null);
+  const [showTrash, setShowTrash] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const editLogoInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     name: '',
     startDate: '',
@@ -36,7 +41,34 @@ const Index = () => {
     knockoutPhases: ['quarter-finals', 'semi-finals', 'final'] as KnockoutPhase[],
     gameDayNames: ['Sábado', 'Domingo'] as string[],
     qualifyingTeams: {} as Record<string, number>,
+    logo: '' as string,
   });
+
+  const activeChampionships = championships.filter(c => !c.deletedAt);
+  const trashedChampionships = championships.filter(c => !!c.deletedAt);
+
+  const uploadLogo = async (file: File): Promise<string | null> => {
+    setUploadingLogo(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const fileName = `${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage.from('championship-logos').upload(fileName, file);
+      if (error) { toast.error('Erro ao enviar logo'); return null; }
+      const { data: urlData } = supabase.storage.from('championship-logos').getPublicUrl(fileName);
+      return urlData.publicUrl;
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>, isEdit = false) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = await uploadLogo(file);
+    if (url) {
+      setFormData(prev => ({ ...prev, logo: url }));
+    }
+  };
 
   const togglePhase = (phase: KnockoutPhase) => {
     setFormData(prev => {
@@ -60,7 +92,7 @@ const Index = () => {
   };
 
   const resetForm = () => {
-    setFormData({ name: '', startDate: '', description: '', knockoutPhases: ['quarter-finals', 'semi-finals', 'final'], gameDayNames: ['Sábado', 'Domingo'], qualifyingTeams: { 'Sábado': 6, 'Domingo': 6 } });
+    setFormData({ name: '', startDate: '', description: '', knockoutPhases: ['quarter-finals', 'semi-finals', 'final'], gameDayNames: ['Sábado', 'Domingo'], qualifyingTeams: { 'Sábado': 6, 'Domingo': 6 }, logo: '' });
   };
 
   const handleCreate = async () => {
@@ -76,6 +108,9 @@ const Index = () => {
     if (Object.keys(formData.qualifyingTeams).length > 0) {
       await updateChampionship(championship.id, { qualifyingTeams: formData.qualifyingTeams });
     }
+    if (formData.logo) {
+      await updateChampionship(championship.id, { logo: formData.logo });
+    }
     resetForm();
     setIsCreateOpen(false);
     toast.success('Campeonato criado com sucesso!');
@@ -87,18 +122,15 @@ const Index = () => {
       return;
     }
 
-    // Get existing game days for this championship
     const existingGameDays = getChampionshipGameDays(editingChampionship);
     const existingDayNames = new Set(existingGameDays.map(g => g.name));
 
-    // Create new game days
     for (const dayName of formData.gameDayNames) {
       if (!existingDayNames.has(dayName)) {
         await createGameDay(editingChampionship, dayName);
       }
     }
 
-    // Delete removed game days
     for (const gd of existingGameDays) {
       if (!formData.gameDayNames.includes(gd.name)) {
         await deleteGameDay(gd.id);
@@ -112,6 +144,7 @@ const Index = () => {
       knockoutPhases: formData.knockoutPhases,
       gameDayNames: formData.gameDayNames,
       qualifyingTeams: formData.qualifyingTeams,
+      logo: formData.logo,
     });
     resetForm();
     setEditingChampionship(null);
@@ -120,7 +153,17 @@ const Index = () => {
 
   const handleDelete = async (id: string) => {
     await deleteChampionship(id);
-    toast.success('Campeonato excluído com sucesso!');
+    toast.success('Campeonato movido para a lixeira!');
+  };
+
+  const handleRestore = async (id: string) => {
+    await restoreChampionship(id);
+    toast.success('Campeonato restaurado!');
+  };
+
+  const handlePermanentDelete = async (id: string) => {
+    await permanentDeleteChampionship(id);
+    toast.success('Campeonato excluído permanentemente!');
   };
 
   const openEditDialog = (championship: typeof championships[0]) => {
@@ -133,9 +176,39 @@ const Index = () => {
       knockoutPhases: championship.knockoutPhases || ['quarter-finals', 'semi-finals', 'final'],
       gameDayNames: dayNames,
       qualifyingTeams: championship.qualifyingTeams || {},
+      logo: championship.logo || '',
     });
     setEditingChampionship(championship.id);
   };
+
+  const LogoUploader = ({ inputRef }: { inputRef: React.RefObject<HTMLInputElement> }) => (
+    <div className="grid gap-2">
+      <Label className="flex items-center gap-2">
+        <ImageIcon className="h-4 w-4 text-primary" />
+        Logo do Campeonato
+      </Label>
+      <div className="flex items-center gap-3">
+        {formData.logo ? (
+          <img src={formData.logo} alt="Logo" className="h-14 w-14 rounded-xl object-cover border border-border" />
+        ) : (
+          <div className="h-14 w-14 rounded-xl bg-muted/50 border border-dashed border-border flex items-center justify-center">
+            <ImageIcon className="h-6 w-6 text-muted-foreground" />
+          </div>
+        )}
+        <div className="flex flex-col gap-1.5">
+          <Button type="button" variant="outline" size="sm" onClick={() => inputRef.current?.click()} disabled={uploadingLogo}>
+            {uploadingLogo ? 'Enviando...' : formData.logo ? 'Trocar Logo' : 'Anexar Logo'}
+          </Button>
+          {formData.logo && (
+            <Button type="button" variant="ghost" size="sm" className="text-destructive h-7 text-xs" onClick={() => setFormData(prev => ({ ...prev, logo: '' }))}>
+              Remover
+            </Button>
+          )}
+        </div>
+        <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleLogoChange(e)} />
+      </div>
+    </div>
+  );
 
   const PhaseSelector = () => (
     <div className="grid gap-2">
@@ -245,7 +318,7 @@ const Index = () => {
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
                 <DialogTrigger asChild>
-                  <Button size="lg" className="gap-2 bg-gradient-primary hover:opacity-90 transition-opacity shadow-lg glow-primary w-full sm:w-auto">
+                  <Button size="lg" className="gap-2 bg-gradient-primary hover:opacity-90 transition-opacity shadow-lg glow-primary flex-1 sm:flex-initial">
                     <Plus className="h-5 w-5" />
                     <span>Novo Campeonato</span>
                   </Button>
@@ -265,6 +338,7 @@ const Index = () => {
                         onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                         placeholder="Ex: Campeonato Brasileiro 2024" className="h-11" />
                     </div>
+                    <LogoUploader inputRef={logoInputRef} />
                     <div className="grid gap-2">
                       <Label htmlFor="startDate">Data de Início</Label>
                       <Input id="startDate" type="date" value={formData.startDate}
@@ -285,6 +359,16 @@ const Index = () => {
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
+
+              {trashedChampionships.length > 0 && (
+                <Button variant="outline" size="icon" onClick={() => setShowTrash(!showTrash)} title="Lixeira" className="relative">
+                  <Archive className="h-4 w-4" />
+                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center">
+                    {trashedChampionships.length}
+                  </span>
+                </Button>
+              )}
+
               <Button variant="outline" size="icon" onClick={() => signOut()} title="Sair">
                 <LogOut className="h-4 w-4" />
               </Button>
@@ -295,7 +379,71 @@ const Index = () => {
 
       {/* Content */}
       <main className="container mx-auto px-4 py-6 sm:py-10">
-        {championships.length === 0 ? (
+        {/* Trash Section */}
+        {showTrash && trashedChampionships.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-lg font-semibold flex items-center gap-2 mb-4">
+              <Archive className="h-5 w-5 text-destructive" />
+              Lixeira ({trashedChampionships.length})
+            </h2>
+            <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+              {trashedChampionships.map(championship => (
+                <Card key={championship.id} className="relative overflow-hidden bg-muted/30 border-destructive/20 opacity-75">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-2">
+                      {championship.logo ? (
+                        <img src={championship.logo} alt="" className="h-10 w-10 rounded-xl object-cover" />
+                      ) : (
+                        <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center">
+                          <Trophy className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <CardTitle className="line-clamp-1 text-lg">{championship.name}</CardTitle>
+                        <p className="text-xs text-muted-foreground">
+                          Excluído em {championship.deletedAt ? new Date(championship.deletedAt).toLocaleDateString('pt-BR') : ''}
+                        </p>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" className="gap-1.5 flex-1" onClick={() => handleRestore(championship.id)}>
+                        <RotateCcw className="h-3.5 w-3.5" />
+                        Restaurar
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive" size="sm" className="gap-1.5 flex-1">
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Excluir
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Excluir permanentemente?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Esta ação não pode ser desfeita. Todas as partidas, rodadas e dados serão perdidos para sempre.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handlePermanentDelete(championship.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                              Excluir Permanentemente
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeChampionships.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 sm:py-24 text-center">
             <div className="relative mb-8">
               <div className="h-28 w-28 sm:h-32 sm:w-32 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center animate-float">
@@ -315,7 +463,7 @@ const Index = () => {
           </div>
         ) : (
           <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-            {championships.map((championship) => {
+            {activeChampionships.map((championship) => {
               const teams = getChampionshipTeams(championship.id);
               const matches = getChampionshipMatches(championship.id);
 
@@ -342,6 +490,7 @@ const Index = () => {
                             <Input id="edit-name" value={formData.name}
                               onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))} className="h-11" />
                           </div>
+                          <LogoUploader inputRef={editLogoInputRef} />
                           <div className="grid gap-2">
                             <Label htmlFor="edit-startDate">Data de Início</Label>
                             <Input id="edit-startDate" type="date" value={formData.startDate}
@@ -371,16 +520,16 @@ const Index = () => {
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Excluir campeonato?</AlertDialogTitle>
+                          <AlertDialogTitle>Mover para lixeira?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Esta ação não pode ser desfeita. Todas as partidas registradas neste campeonato também serão excluídas.
+                            O campeonato será movido para a lixeira. Você poderá restaurá-lo ou excluí-lo permanentemente depois.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancelar</AlertDialogCancel>
                           <AlertDialogAction onClick={() => handleDelete(championship.id)}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                            Excluir
+                            Mover para Lixeira
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
@@ -389,13 +538,21 @@ const Index = () => {
 
                   <Link to={`/championship/${championship.id}`} className="relative z-0">
                     <CardHeader className="pb-3">
-                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-primary/10 text-primary mb-1">
-                        <Trophy className="h-5 w-5" />
+                      <div className="flex items-center gap-3">
+                        {championship.logo ? (
+                          <img src={championship.logo} alt="" className="h-11 w-11 rounded-xl object-cover" />
+                        ) : (
+                          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-primary/10 text-primary">
+                            <Trophy className="h-5 w-5" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <CardTitle className="line-clamp-1 text-lg">{championship.name}</CardTitle>
+                          {championship.description && (
+                            <CardDescription className="line-clamp-1 text-sm">{championship.description}</CardDescription>
+                          )}
+                        </div>
                       </div>
-                      <CardTitle className="mt-3 line-clamp-1 text-lg">{championship.name}</CardTitle>
-                      {championship.description && (
-                        <CardDescription className="line-clamp-2 text-sm">{championship.description}</CardDescription>
-                      )}
                     </CardHeader>
                     <CardContent>
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
