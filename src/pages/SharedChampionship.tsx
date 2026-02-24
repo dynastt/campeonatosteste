@@ -23,6 +23,7 @@ function mapChampionship(row: any): Championship {
     description: row.description || undefined, teamIds: row.team_ids || [],
     gameDays: row.game_days || [], knockoutPhases: (row.knockout_phases || []) as KnockoutPhase[],
     gameDayNames: row.game_day_names || [], qualifyingTeams: row.qualifying_teams || {},
+    logo: row.logo || undefined, deletedAt: row.deleted_at || undefined,
     createdAt: row.created_at,
   };
 }
@@ -161,7 +162,11 @@ const SharedChampionship = () => {
         <div className="container mx-auto px-4 py-4 sm:py-6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div className="flex items-center gap-3 sm:gap-4">
-              <img src={logoLffc} alt="LFFC" className="h-12 w-12 sm:h-14 sm:w-14 object-contain" />
+              {championship.logo ? (
+                <img src={championship.logo} alt={championship.name} className="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl object-cover shadow-lg" />
+              ) : (
+                <img src={logoLffc} alt="LFFC" className="h-12 w-12 sm:h-14 sm:w-14 object-contain" />
+              )}
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">{championship.name}</h1>
                 {championship.description && <p className="text-xs sm:text-sm text-muted-foreground line-clamp-1">{championship.description}</p>}
@@ -221,7 +226,7 @@ const SharedChampionship = () => {
                 </div>
               </CardHeader>
               <CardContent>
-                <StandingsTable standings={standings} title={`Classificação - ${championship.name}`} championshipName={championship.name} sortByPercentage={standingsMode === 'percentage'} showExport={false} />
+                <StandingsTable standings={standings} title={`Classificação - ${championship.name}`} championshipName={championship.name} sortByPercentage={standingsMode === 'percentage'} showExport={false} championshipLogo={championship.logo} />
               </CardContent>
             </Card>
 
@@ -285,7 +290,7 @@ const SharedChampionship = () => {
                           </div>
                         </CardHeader>
                         <CardContent>
-                          <StandingsTable standings={dayStandings} title={`Classificação - ${day.name}`} championshipName={championship.name} showExport={false} qualifyingCount={championship.qualifyingTeams?.[day.name]} sortByPercentage={(gameDayStandingsMode[day.id] || 'points') === 'percentage'} />
+                          <StandingsTable standings={dayStandings} title={`Classificação - ${day.name}`} championshipName={championship.name} showExport={false} qualifyingCount={championship.qualifyingTeams?.[day.name]} sortByPercentage={(gameDayStandingsMode[day.id] || 'points') === 'percentage'} championshipLogo={championship.logo} />
                         </CardContent>
                       </Card>
                       {dayRounds.length > 0 && (

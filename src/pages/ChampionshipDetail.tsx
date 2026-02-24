@@ -205,9 +205,13 @@ const ChampionshipDetail = () => {
 
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div className="flex items-center gap-3 sm:gap-4">
-              <div className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-2xl bg-gradient-primary text-primary-foreground shadow-lg glow-primary">
-                <Trophy className="h-6 w-6 sm:h-7 sm:w-7" />
-              </div>
+              {championship.logo ? (
+                <img src={championship.logo} alt="" className="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl object-cover shadow-lg" />
+              ) : (
+                <div className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-2xl bg-gradient-primary text-primary-foreground shadow-lg glow-primary">
+                  <Trophy className="h-6 w-6 sm:h-7 sm:w-7" />
+                </div>
+              )}
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">{championship.name}</h1>
                 {championship.description && (
@@ -307,6 +311,7 @@ const ChampionshipDetail = () => {
                       title={`Classificação - ${championship.name}`}
                       championshipName={championship.name}
                       sortByPercentage={standingsMode === 'percentage'}
+                      championshipLogo={championship.logo}
                     />
                   )}
                 </CardContent>
@@ -378,6 +383,7 @@ const ChampionshipDetail = () => {
 
             <GameDayManager
               qualifyingTeams={championship.qualifyingTeams}
+              championshipLogo={championship.logo}
               gameDays={gameDays}
               allTeams={teams}
               matches={matches}

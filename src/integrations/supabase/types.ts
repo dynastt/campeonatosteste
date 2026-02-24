@@ -49,11 +49,13 @@ export type Database = {
       championships: {
         Row: {
           created_at: string
+          deleted_at: string | null
           description: string | null
           game_day_names: string[] | null
           game_days: string[] | null
           id: string
           knockout_phases: string[] | null
+          logo: string | null
           name: string
           qualifying_teams: Json | null
           start_date: string | null
@@ -62,11 +64,13 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           description?: string | null
           game_day_names?: string[] | null
           game_days?: string[] | null
           id?: string
           knockout_phases?: string[] | null
+          logo?: string | null
           name: string
           qualifying_teams?: Json | null
           start_date?: string | null
@@ -75,11 +79,13 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           description?: string | null
           game_day_names?: string[] | null
           game_days?: string[] | null
           id?: string
           knockout_phases?: string[] | null
+          logo?: string | null
           name?: string
           qualifying_teams?: Json | null
           start_date?: string | null

@@ -21,6 +21,7 @@ interface GameDayManagerProps {
   championshipId: string;
   championshipName?: string;
   qualifyingTeams?: Record<string, number>;
+  championshipLogo?: string;
   onCreateGameDay: (name: string) => GameDay | Promise<GameDay | null>;
   onDeleteGameDay: (id: string) => void;
   onAddTeamToGameDay: (gameDayId: string, teamId: string) => void;
@@ -41,6 +42,7 @@ const GameDayManager = ({
   championshipId,
   championshipName,
   qualifyingTeams,
+  championshipLogo,
   onCreateGameDay,
   onDeleteGameDay,
   onAddTeamToGameDay,
@@ -333,6 +335,7 @@ const GameDayManager = ({
                         showExport={true}
                         qualifyingCount={qualifyingTeams?.[day.name]}
                         sortByPercentage={(gameDayStandingsMode[day.id] || 'points') === 'percentage'}
+                        championshipLogo={championshipLogo}
                       />
                     </CardContent>
                   </Card>

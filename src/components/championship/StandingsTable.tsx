@@ -6,6 +6,7 @@ import { AlertTriangle, Trophy, Medal, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import logoLffc from '@/assets/logo-lffc.png';
 
 interface StandingsTableProps {
   standings: TeamStats[];
@@ -14,9 +15,10 @@ interface StandingsTableProps {
   showExport?: boolean;
   qualifyingCount?: number;
   sortByPercentage?: boolean;
+  championshipLogo?: string;
 }
 
-const StandingsTable = ({ standings, title = 'Classificação', championshipName, showExport = true, qualifyingCount, sortByPercentage = false }: StandingsTableProps) => {
+const StandingsTable = ({ standings, title = 'Classificação', championshipName, showExport = true, qualifyingCount, sortByPercentage = false, championshipLogo }: StandingsTableProps) => {
   if (standings.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
@@ -88,6 +90,9 @@ const StandingsTable = ({ standings, title = 'Classificação', championshipName
     toast.success('Classificação exportada em PDF!');
   };
 
+  // Determine which watermark to use: championship logo → LFFC logo
+  const watermarkSrc = championshipLogo || logoLffc;
+
   return (
     <div className="space-y-4">
       {showExport && (
@@ -99,9 +104,19 @@ const StandingsTable = ({ standings, title = 'Classificação', championshipName
         </div>
       )}
 
-      <div className="rounded-xl border border-border/50 overflow-x-auto">
+      <div className="rounded-xl border border-border/50 overflow-x-auto relative">
+        {/* Watermark */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
+          <img
+            src={watermarkSrc}
+            alt=""
+            className="w-40 h-40 sm:w-56 sm:h-56 object-contain opacity-[0.04]"
+            draggable={false}
+          />
+        </div>
+
         {title && <h3 className="sr-only">{title}</h3>}
-        <Table className="w-full">
+        <Table className="w-full relative z-[1]">
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
               <TableHead className="w-8 sm:w-10 text-center font-semibold px-1 py-2">#</TableHead>

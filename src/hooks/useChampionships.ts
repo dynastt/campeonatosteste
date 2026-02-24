@@ -16,6 +16,8 @@ function mapChampionship(row: any): Championship {
     knockoutPhases: (row.knockout_phases || []) as KnockoutPhase[],
     gameDayNames: row.game_day_names || [],
     qualifyingTeams: row.qualifying_teams || {},
+    logo: row.logo || undefined,
+    deletedAt: row.deleted_at || undefined,
     createdAt: row.created_at,
   };
 }
@@ -120,6 +122,7 @@ export function useChampionships() {
       knockout_phases: data.knockoutPhases || ['quarter-finals', 'semi-finals', 'final'],
       game_day_names: data.gameDayNames || [],
       qualifying_teams: data.qualifyingTeams || {},
+      logo: data.logo || null,
     }).select().single();
     if (error || !row) return null;
     const mapped = mapChampionship(row);
@@ -137,12 +140,27 @@ export function useChampionships() {
     if (data.knockoutPhases !== undefined) updateData.knockout_phases = data.knockoutPhases;
     if (data.gameDayNames !== undefined) updateData.game_day_names = data.gameDayNames;
     if (data.qualifyingTeams !== undefined) updateData.qualifying_teams = data.qualifyingTeams;
+    if (data.logo !== undefined) updateData.logo = data.logo || null;
     await supabase.from('championships').update(updateData).eq('id', id);
     setChampionships(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
     broadcastUpdate(id);
   }, [broadcastUpdate]);
 
+  // Soft delete - move to trash
   const deleteChampionship = useCallback(async (id: string) => {
+    const now = new Date().toISOString();
+    await supabase.from('championships').update({ deleted_at: now }).eq('id', id);
+    setChampionships(prev => prev.map(c => c.id === id ? { ...c, deletedAt: now } : c));
+  }, []);
+
+  // Restore from trash
+  const restoreChampionship = useCallback(async (id: string) => {
+    await supabase.from('championships').update({ deleted_at: null }).eq('id', id);
+    setChampionships(prev => prev.map(c => c.id === id ? { ...c, deletedAt: undefined } : c));
+  }, []);
+
+  // Permanent delete
+  const permanentDeleteChampionship = useCallback(async (id: string) => {
     await supabase.from('championships').delete().eq('id', id);
     setChampionships(prev => prev.filter(c => c.id !== id));
     setMatches(prev => prev.filter(m => m.championshipId !== id));
@@ -423,7 +441,7 @@ export function useChampionships() {
 
   return {
     championships, teams, matches, rounds, gameDays, knockoutMatches,
-    createChampionship, updateChampionship, deleteChampionship, getChampionship,
+    createChampionship, updateChampionship, deleteChampionship, restoreChampionship, permanentDeleteChampionship, getChampionship,
     createTeam, updateTeam, deleteTeam, getTeam,
     addTeamToChampionship, removeTeamFromChampionship, getChampionshipTeams, getTeamsNotInChampionship,
     createGameDay, updateGameDay, deleteGameDay, getChampionshipGameDays,
