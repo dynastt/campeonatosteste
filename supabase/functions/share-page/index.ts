@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
 </html>`
 
     return new Response(html, {
-      headers: { 'Content-Type': 'text/html; charset=utf-8', ...corsHeaders }
+      headers: { 'Content-Type': 'text/html; charset=utf-8' }
     })
   } catch (_err) {
     return new Response('<html><body><h1>Erro interno</h1></body></html>', {

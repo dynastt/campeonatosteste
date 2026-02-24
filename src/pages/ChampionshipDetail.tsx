@@ -50,9 +50,9 @@ const ShareLinkButton = ({ championshipId, userId }: { championshipId: string; u
 
   const copyLink = () => {
     if (!shareData) return;
-    // Use the edge function URL for WhatsApp OG embed support
-    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-    const url = `https://${projectId}.supabase.co/functions/v1/share-page?c=${shareData.short_code}`;
+    // Use clean app URL for sharing
+    const appUrl = window.location.origin;
+    const url = `${appUrl}/share/${shareData.short_code}`;
     navigator.clipboard.writeText(url);
     setCopied(true);
     toast.success('Link copiado!');
