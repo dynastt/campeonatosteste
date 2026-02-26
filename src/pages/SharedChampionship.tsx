@@ -97,6 +97,28 @@ const SharedChampionship = () => {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  // Dynamically update meta tags for social sharing (works for Telegram, Discord, etc.)
+  useEffect(() => {
+    if (!championship) return;
+    const title = `⚽ ${championship.name}`;
+    const desc = championship.description || `${teams.length} times • Acompanhe ao vivo`;
+    document.title = title;
+    const setMeta = (attr: string, key: string, content: string) => {
+      let el = document.querySelector(`meta[${attr}="${key}"]`) as HTMLMetaElement;
+      if (el) el.content = content;
+    };
+    setMeta('property', 'og:title', title);
+    setMeta('property', 'og:description', desc);
+    setMeta('property', 'og:site_name', championship.name);
+    setMeta('name', 'twitter:title', title);
+    setMeta('name', 'twitter:description', desc);
+    setMeta('name', 'description', desc);
+    if (championship.logo) {
+      setMeta('property', 'og:image', championship.logo);
+      setMeta('name', 'twitter:image', championship.logo);
+    }
+  }, [championship, teams.length]);
+
   // Realtime: subscribe to broadcast channel for live updates
   useEffect(() => {
     if (!championship) return;
