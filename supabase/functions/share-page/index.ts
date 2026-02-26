@@ -71,21 +71,21 @@ Deno.serve(async (req) => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${escapeHtml(title)} - LFFC</title>
+  <title>${escapeHtml(title)}</title>
   <meta name="description" content="${escapeHtml(description)}">
   
   <!-- Open Graph / WhatsApp / Facebook -->
   <meta property="og:type" content="website">
   <meta property="og:title" content="⚽ ${escapeHtml(title)}">
-  <meta property="og:description" content="${escapeHtml(description)} | Liga Francana de Futebol de Chácara">
-  <meta property="og:site_name" content="Liga Francana de Futebol de Chácara">
+  <meta property="og:description" content="${escapeHtml(description)}">
+  <meta property="og:site_name" content="${escapeHtml(title)}">
   ${ogImage ? `<meta property="og:image" content="${escapeHtml(ogImage)}">` : ''}
   <meta property="og:url" content="${escapeHtml(spaUrl)}">
   
   <!-- Twitter -->
   <meta name="twitter:card" content="${ogImage ? 'summary_large_image' : 'summary'}">
   <meta name="twitter:title" content="⚽ ${escapeHtml(title)}">
-  <meta name="twitter:description" content="${escapeHtml(description)} | LFFC">
+  <meta name="twitter:description" content="${escapeHtml(description)}">
   ${ogImage ? `<meta name="twitter:image" content="${escapeHtml(ogImage)}">` : ''}
   
   <!-- Redirect to SPA -->
