@@ -50,10 +50,10 @@ const ShareLinkButton = ({ championshipId, userId }: { championshipId: string; u
 
   const copyLink = () => {
     if (!shareData) return;
-    // Point to edge function so social media crawlers get OG meta tags
-    // The edge function serves HTML with OG tags and redirects to the SPA
-    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-    const url = `https://${projectId}.supabase.co/functions/v1/share-page?c=${shareData.short_code}`;
+    const appUrl = import.meta.env.PROD 
+      ? 'https://campeonatosteste.lovable.app' 
+      : window.location.origin;
+    const url = `${appUrl}/share/${shareData.short_code}`;
     navigator.clipboard.writeText(url);
     setCopied(true);
     toast.success('Link copiado!');
