@@ -130,6 +130,84 @@ const SharedChampionship = () => {
     return calculateStandings(relevantTeams.length > 0 ? relevantTeams : teams, allRegularMatches);
   }, [teams, allRegularMatches]);
 
+  // Cumulative knockout standings per phase (same logic as KnockoutBracket)
+  const phaseStandings = useMemo(() => {
+    const phaseOrder: KnockoutPhase[] = ['round-of-16', 'quarter-finals', 'semi-finals', 'final'];
+    const result: { phase: KnockoutPhase; label: string; standings: ReturnType<typeof calculateStandings> }[] = [];
+
+    const regularStats = new Map<string, { points: number; played: number; won: number; drawn: number; lost: number; goalsFor: number; goalsAgainst: number; woCount: number; gaveWO: boolean }>();
+    const regularStandings = calculateStandings(teams, allRegularMatches);
+    regularStandings.forEach(stat => {
+      regularStats.set(stat.teamId, {
+        points: stat.points, played: stat.played, won: stat.won, drawn: stat.drawn,
+        lost: stat.lost, goalsFor: stat.goalsFor, goalsAgainst: stat.goalsAgainst,
+        woCount: stat.woCount, gaveWO: stat.gaveWO,
+      });
+    });
+
+    let accumulatedKnockoutStats = new Map<string, { points: number; played: number; won: number; drawn: number; lost: number; goalsFor: number; goalsAgainst: number; woCount: number; gaveWO: boolean }>();
+
+    for (const phase of phaseOrder) {
+      const phaseMatches = knockoutMatches.filter(m => m.phase === phase);
+      if (phaseMatches.length === 0) continue;
+
+      const pTeamIds = new Set<string>();
+      phaseMatches.forEach(m => {
+        if (m.homeTeamId) pTeamIds.add(m.homeTeamId);
+        if (m.awayTeamId) pTeamIds.add(m.awayTeamId);
+      });
+      const phaseTeams = teams.filter(t => pTeamIds.has(t.id));
+
+      const matchesForStandings: Match[] = phaseMatches.map(m => ({
+        id: m.id, championshipId: m.championshipId,
+        homeTeamId: m.homeTeamId || '', awayTeamId: m.awayTeamId || '',
+        homeGoals: m.homeGoals, awayGoals: m.awayGoals,
+        homeWO: m.homeWO, awayWO: m.awayWO,
+        round: 0, played: m.homeGoals !== null || m.homeWO || m.awayWO,
+        createdAt: m.createdAt,
+      }));
+
+      const currentPhaseStats = calculateStandings(phaseTeams, matchesForStandings);
+
+      const cumulativeStandings = currentPhaseStats.map(stat => {
+        const regular = regularStats.get(stat.teamId);
+        const prevKnockout = accumulatedKnockoutStats.get(stat.teamId);
+
+        let tp = stat.points, tpl = stat.played, tw = stat.won, td = stat.drawn, tl = stat.lost, tgf = stat.goalsFor, tga = stat.goalsAgainst, two = stat.woCount, tgw = stat.gaveWO;
+
+        if (regular) { tp += regular.points; tpl += regular.played; tw += regular.won; td += regular.drawn; tl += regular.lost; tgf += regular.goalsFor; tga += regular.goalsAgainst; two += regular.woCount; tgw = tgw || regular.gaveWO; }
+        if (prevKnockout) { tp += prevKnockout.points; tpl += prevKnockout.played; tw += prevKnockout.won; td += prevKnockout.drawn; tl += prevKnockout.lost; tgf += prevKnockout.goalsFor; tga += prevKnockout.goalsAgainst; two += prevKnockout.woCount; tgw = tgw || prevKnockout.gaveWO; }
+
+        return { ...stat, points: tp, played: tpl, won: tw, drawn: td, lost: tl, goalsFor: tgf, goalsAgainst: tga, goalDifference: tgf - tga, gaveWO: tgw, woCount: two, pointsPercentage: tpl > 0 ? (tp / (tpl * 3)) * 100 : 0 };
+      });
+
+      cumulativeStandings.sort((a, b) => {
+        if (b.points !== a.points) return b.points - a.points;
+        if (b.won !== a.won) return b.won - a.won;
+        if (a.gaveWO !== b.gaveWO) return a.gaveWO ? 1 : -1;
+        if (a.goalsAgainst !== b.goalsAgainst) return a.goalsAgainst - b.goalsAgainst;
+        if (b.goalDifference !== a.goalDifference) return b.goalDifference - a.goalDifference;
+        return a.team.name.localeCompare(b.team.name);
+      });
+
+      const label = PHASE_LABELS[phase] || '';
+      result.push({ phase, label, standings: cumulativeStandings });
+
+      const newAccumulated = new Map(accumulatedKnockoutStats);
+      currentPhaseStats.forEach(stat => {
+        const prev = newAccumulated.get(stat.teamId);
+        if (prev) {
+          newAccumulated.set(stat.teamId, { points: prev.points + stat.points, played: prev.played + stat.played, won: prev.won + stat.won, drawn: prev.drawn + stat.drawn, lost: prev.lost + stat.lost, goalsFor: prev.goalsFor + stat.goalsFor, goalsAgainst: prev.goalsAgainst + stat.goalsAgainst, woCount: prev.woCount + stat.woCount, gaveWO: prev.gaveWO || stat.gaveWO });
+        } else {
+          newAccumulated.set(stat.teamId, { points: stat.points, played: stat.played, won: stat.won, drawn: stat.drawn, lost: stat.lost, goalsFor: stat.goalsFor, goalsAgainst: stat.goalsAgainst, woCount: stat.woCount, gaveWO: stat.gaveWO });
+        }
+      });
+      accumulatedKnockoutStats = newAccumulated;
+    }
+
+    return result;
+  }, [knockoutMatches, teams, allRegularMatches]);
+
   useEffect(() => {
     if (gameDays.length > 0 && !activeGameDay) setActiveGameDay(gameDays[0].id);
   }, [gameDays, activeGameDay]);
@@ -329,6 +407,24 @@ const SharedChampionship = () => {
 
           {/* Knockout */}
           <TabsContent value="knockout" className="space-y-4">
+            {/* Cumulative standings per phase */}
+            {phaseStandings.map(({ phase, label, standings: phaseStandingsData }) => (
+              phaseStandingsData.length > 0 && (
+                <Card key={`standings-${phase}`} className="bg-gradient-card border-border/50">
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Trophy className="h-5 w-5 text-primary" />
+                      Classificação - {label}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <StandingsTable standings={phaseStandingsData} title={`Classificação - ${label}`} championshipName={championship.name} showExport={false} championshipLogo={championship.logo} />
+                  </CardContent>
+                </Card>
+              )
+            ))}
+
+            {/* Knockout matches per phase */}
             {(championship.knockoutPhases || []).map(phase => {
               const phaseMatches = knockoutMatches.filter(m => m.phase === phase).sort((a, b) => a.position - b.position);
               if (phaseMatches.length === 0) return null;
