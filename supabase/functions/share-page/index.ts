@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
     const ogImage = champ.logo || ''
     
     // Build the SPA URL for redirect
-    const appUrl = Deno.env.get('APP_URL') || 'https://campeonatosteste.lovable.app'
+    const appUrl = Deno.env.get('APP_URL') || 'https://campeonatofranca.lovable.app'
     const spaUrl = `${appUrl}/share/${share.short_code}`
 
     const html = `<!DOCTYPE html>
