@@ -51,7 +51,7 @@ const ShareLinkButton = ({ championshipId, userId }: { championshipId: string; u
   const copyLink = () => {
     if (!shareData) return;
     const appUrl = import.meta.env.PROD 
-      ? 'https://campeonatosteste.lovable.app' 
+      ? 'https://campeonatofranca.lovable.app' 
       : window.location.origin;
     const url = `${appUrl}/share/${shareData.short_code}`;
     navigator.clipboard.writeText(url);
