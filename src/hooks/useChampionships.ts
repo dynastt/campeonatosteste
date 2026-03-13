@@ -313,9 +313,13 @@ export function useChampionships() {
     const updateData: any = {};
     if (data.number !== undefined) updateData.number = data.number;
     if (data.name !== undefined) updateData.name = data.name;
+    if (data.date !== undefined) updateData.date = data.date || null;
     await supabase.from('rounds').update(updateData).eq('id', id);
     setRounds(prev => prev.map(r => r.id === id ? { ...r, ...data } : r));
-  }, []);
+    // Broadcast for shared links
+    const round = rounds.find(r => r.id === id);
+    if (round) broadcastUpdate(round.championshipId);
+  }, [rounds, broadcastUpdate]);
 
   const deleteRound = useCallback(async (id: string) => {
     const round = rounds.find(r => r.id === id);
