@@ -308,6 +308,7 @@ const GameDayManager = ({
                     gameDayId={day.id}
                     onCreateRound={(name) => onCreateRound(name, day.id)}
                     onDeleteRound={onDeleteRound}
+                    onUpdateRound={onUpdateRound}
                     onCreateMatch={onCreateMatch}
                     onUpdateMatch={onUpdateMatch}
                     onDeleteMatch={onDeleteMatch}
