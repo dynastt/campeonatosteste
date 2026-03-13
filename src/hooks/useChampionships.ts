@@ -380,6 +380,7 @@ export function useChampionships() {
     if (validated.played !== undefined) updateData.played = validated.played;
     if (validated.homeTeamId !== undefined) updateData.home_team_id = validated.homeTeamId;
     if (validated.awayTeamId !== undefined) updateData.away_team_id = validated.awayTeamId;
+    if (data.matchTime !== undefined) updateData.match_time = data.matchTime || null;
     await supabase.from('matches').update(updateData).eq('id', id);
     setMatches(prev => prev.map(m => m.id === id ? { ...m, ...data } : m));
     // Broadcast update for the match's championship
