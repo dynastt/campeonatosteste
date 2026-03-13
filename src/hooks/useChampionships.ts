@@ -354,6 +354,7 @@ export function useChampionships() {
       home_goals: data.homeGoals, away_goals: data.awayGoals,
       home_wo: data.homeWO, away_wo: data.awayWO,
       round: data.round ?? 0, played: data.played ?? false,
+      match_time: data.matchTime || null,
     }).select().single();
     if (error || !row) return null;
     const mapped = mapMatch(row);
