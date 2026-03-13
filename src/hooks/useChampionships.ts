@@ -32,14 +32,16 @@ function mapMatch(row: any): Match {
     homeTeamId: row.home_team_id, awayTeamId: row.away_team_id,
     homeGoals: row.home_goals, awayGoals: row.away_goals,
     homeWO: row.home_wo, awayWO: row.away_wo,
-    round: row.round, played: row.played, createdAt: row.created_at,
+    round: row.round, played: row.played, matchTime: row.match_time || undefined,
+    createdAt: row.created_at,
   };
 }
 
 function mapRound(row: any): Round {
   return {
     id: row.id, championshipId: row.championship_id, gameDayId: row.game_day_id || undefined,
-    number: row.number, name: row.name || undefined, createdAt: row.created_at,
+    number: row.number, name: row.name || undefined, date: row.date || undefined,
+    createdAt: row.created_at,
   };
 }
 
@@ -311,9 +313,13 @@ export function useChampionships() {
     const updateData: any = {};
     if (data.number !== undefined) updateData.number = data.number;
     if (data.name !== undefined) updateData.name = data.name;
+    if (data.date !== undefined) updateData.date = data.date || null;
     await supabase.from('rounds').update(updateData).eq('id', id);
     setRounds(prev => prev.map(r => r.id === id ? { ...r, ...data } : r));
-  }, []);
+    // Broadcast for shared links
+    const round = rounds.find(r => r.id === id);
+    if (round) broadcastUpdate(round.championshipId);
+  }, [rounds, broadcastUpdate]);
 
   const deleteRound = useCallback(async (id: string) => {
     const round = rounds.find(r => r.id === id);
@@ -348,6 +354,7 @@ export function useChampionships() {
       home_goals: data.homeGoals, away_goals: data.awayGoals,
       home_wo: data.homeWO, away_wo: data.awayWO,
       round: data.round ?? 0, played: data.played ?? false,
+      match_time: data.matchTime || null,
     }).select().single();
     if (error || !row) return null;
     const mapped = mapMatch(row);
@@ -373,6 +380,7 @@ export function useChampionships() {
     if (validated.played !== undefined) updateData.played = validated.played;
     if (validated.homeTeamId !== undefined) updateData.home_team_id = validated.homeTeamId;
     if (validated.awayTeamId !== undefined) updateData.away_team_id = validated.awayTeamId;
+    if (data.matchTime !== undefined) updateData.match_time = data.matchTime || null;
     await supabase.from('matches').update(updateData).eq('id', id);
     setMatches(prev => prev.map(m => m.id === id ? { ...m, ...data } : m));
     // Broadcast update for the match's championship

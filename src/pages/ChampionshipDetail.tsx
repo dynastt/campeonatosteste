@@ -107,6 +107,7 @@ const ChampionshipDetail = () => {
     updateTeam,
     getTeamsNotInChampionship,
     createRound,
+    updateRound,
     deleteRound,
     createMatch,
     updateMatch,
@@ -362,6 +363,7 @@ const ChampionshipDetail = () => {
                   championshipId={championship.id}
                   onCreateRound={(name) => createRound(championship.id, name)}
                   onDeleteRound={deleteRound}
+                  onUpdateRound={updateRound}
                   onCreateMatch={createMatch}
                   onUpdateMatch={updateMatch}
                   onDeleteMatch={deleteMatch}
@@ -400,6 +402,7 @@ const ChampionshipDetail = () => {
               onUpdateGameDayTeams={handleUpdateGameDayTeams}
               onCreateRound={(name, gameDayId) => createRound(championship.id, name, gameDayId)}
               onDeleteRound={deleteRound}
+              onUpdateRound={updateRound}
               onCreateMatch={createMatch}
               onUpdateMatch={updateMatch}
               onDeleteMatch={deleteMatch}

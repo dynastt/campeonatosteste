@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Check, Clock, AlertTriangle, Plus, Trash2, Edit2, LayoutGrid } from 'lucide-react';
+import { Check, Clock, AlertTriangle, Plus, Trash2, Edit2, LayoutGrid, CalendarDays } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface RoundsListProps {
@@ -20,6 +20,7 @@ interface RoundsListProps {
   gameDayId?: string;
   onCreateRound: (name?: string) => void;
   onDeleteRound: (id: string) => void;
+  onUpdateRound?: (id: string, data: Partial<Round>) => void;
   onCreateMatch: (data: Omit<Match, 'id' | 'createdAt'>) => void;
   onUpdateMatch: (id: string, data: Partial<Match>) => void;
   onDeleteMatch: (id: string) => void;
@@ -32,7 +33,14 @@ interface MatchFormData {
   awayGoals: number | null;
   homeWO: boolean;
   awayWO: boolean;
+  matchTime: string;
 }
+
+const formatDateBR = (dateStr?: string) => {
+  if (!dateStr) return null;
+  const [y, m, d] = dateStr.split('-');
+  return `${d}/${m}/${y}`;
+};
 
 const RoundsList = ({
   rounds,
@@ -42,6 +50,7 @@ const RoundsList = ({
   gameDayId,
   onCreateRound,
   onDeleteRound,
+  onUpdateRound,
   onCreateMatch,
   onUpdateMatch,
   onDeleteMatch,
@@ -54,6 +63,12 @@ const RoundsList = ({
 
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
 
+  // Edit round dialog
+  const [isEditRoundOpen, setIsEditRoundOpen] = useState(false);
+  const [editRoundName, setEditRoundName] = useState('');
+  const [editRoundDate, setEditRoundDate] = useState('');
+  const [editingRound, setEditingRound] = useState<Round | null>(null);
+
   const [matchForm, setMatchForm] = useState<MatchFormData>({
     homeTeamId: '',
     awayTeamId: '',
@@ -61,6 +76,7 @@ const RoundsList = ({
     awayGoals: null,
     homeWO: false,
     awayWO: false,
+    matchTime: '',
   });
 
   const getTeam = (id: string) => teams.find(t => t.id === id);
@@ -83,6 +99,23 @@ const RoundsList = ({
     }
   };
 
+  const openEditRoundDialog = (round: Round) => {
+    setEditingRound(round);
+    setEditRoundName(round.name || '');
+    setEditRoundDate(round.date || '');
+    setIsEditRoundOpen(true);
+  };
+
+  const handleEditRound = () => {
+    if (!editingRound || !onUpdateRound) return;
+    onUpdateRound(editingRound.id, {
+      name: editRoundName || undefined,
+      date: editRoundDate || undefined,
+    });
+    setIsEditRoundOpen(false);
+    toast.success('Rodada atualizada!');
+  };
+
   const openAddMatchDialog = (round: Round) => {
     setSelectedRound(round);
     setMatchForm({
@@ -92,6 +125,7 @@ const RoundsList = ({
       awayGoals: null,
       homeWO: false,
       awayWO: false,
+      matchTime: '',
     });
     setEditingMatch(null);
     setIsAddMatchOpen(true);
@@ -106,6 +140,7 @@ const RoundsList = ({
       awayGoals: match.awayGoals,
       homeWO: match.homeWO,
       awayWO: match.awayWO,
+      matchTime: match.matchTime || '',
     });
     setEditingMatch(match);
     setIsAddMatchOpen(true);
@@ -137,6 +172,7 @@ const RoundsList = ({
         homeWO: matchForm.homeWO,
         awayWO: matchForm.awayWO,
         played,
+        matchTime: matchForm.matchTime || undefined,
       });
       toast.success('Partida atualizada!');
     } else {
@@ -151,6 +187,7 @@ const RoundsList = ({
         championshipId,
         gameDayId,
         played,
+        matchTime: matchForm.matchTime || undefined,
       });
       toast.success('Partida adicionada!');
     }
@@ -240,10 +277,18 @@ const RoundsList = ({
                           <Clock className="h-4 w-4 text-amber-600" />
                         </div>
                       )}
-                      <span className="font-semibold">
-                        Rodada {round.number}
-                        {round.name && <span className="font-normal text-muted-foreground ml-2">- {round.name}</span>}
-                      </span>
+                      <div className="flex flex-col items-start">
+                        <span className="font-semibold">
+                          Rodada {round.number}
+                          {round.name && <span className="font-normal text-muted-foreground ml-2">- {round.name}</span>}
+                        </span>
+                        {round.date && (
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <CalendarDays className="h-3 w-3" />
+                            {formatDateBR(round.date)}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <Badge variant="outline" className="ml-auto mr-4 bg-muted/50">
                       {playedCount}/{roundMatches.length} jogos
@@ -272,6 +317,13 @@ const RoundsList = ({
                             key={match.id}
                             className={`flex items-center gap-2 sm:gap-3 p-3 rounded-xl border transition-colors ${isNotPlayed ? 'bg-muted/30 border-dashed' : 'bg-muted/50 border-border/50'}`}
                           >
+                            {/* Match Time */}
+                            {match.matchTime && (
+                              <span className="text-xs text-muted-foreground font-medium min-w-[40px] text-center flex-shrink-0">
+                                {match.matchTime}
+                              </span>
+                            )}
+
                             {/* Home Team */}
                             <div className="flex-1 text-right min-w-0">
                               <div className="flex items-center justify-end gap-2">
@@ -366,15 +418,28 @@ const RoundsList = ({
 
                   {/* Round Actions */}
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mt-4 pt-3 border-t">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-2"
-                      onClick={() => openAddMatchDialog(round)}
-                    >
-                      <Plus className="h-4 w-4" />
-                      Adicionar Jogo
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                        onClick={() => openAddMatchDialog(round)}
+                      >
+                        <Plus className="h-4 w-4" />
+                        Adicionar Jogo
+                      </Button>
+                      {onUpdateRound && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-2"
+                          onClick={() => openEditRoundDialog(round)}
+                        >
+                          <Edit2 className="h-4 w-4" />
+                          Editar Rodada
+                        </Button>
+                      )}
+                    </div>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -430,6 +495,53 @@ const RoundsList = ({
         </DialogContent>
       </Dialog>
 
+      {/* Edit Round Dialog */}
+      <Dialog open={isEditRoundOpen} onOpenChange={setIsEditRoundOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit2 className="h-5 w-5 text-primary" />
+              Editar Rodada {editingRound?.number}
+            </DialogTitle>
+            <DialogDescription>
+              Altere o nome e a data da rodada
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="edit-round-name">Nome (opcional)</Label>
+              <Input
+                id="edit-round-name"
+                placeholder="Ex: Semifinal, Fase de grupos..."
+                value={editRoundName}
+                onChange={(e) => setEditRoundName(e.target.value)}
+                className="h-11"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-round-date">Data (opcional)</Label>
+              <Input
+                id="edit-round-date"
+                type="date"
+                value={editRoundDate}
+                onChange={(e) => setEditRoundDate(e.target.value)}
+                className="h-11"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setIsEditRoundOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleEditRound} className="bg-gradient-primary hover:opacity-90">
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Add/Edit Match Dialog */}
       <Dialog open={isAddMatchOpen} onOpenChange={setIsAddMatchOpen}>
         <DialogContent className="sm:max-w-md">
@@ -480,6 +592,19 @@ const RoundsList = ({
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            {/* Match Time */}
+            <div className="grid gap-2">
+              <Label htmlFor="match-time">Horário (opcional)</Label>
+              <Input
+                id="match-time"
+                type="time"
+                value={matchForm.matchTime}
+                onChange={(e) => setMatchForm(prev => ({ ...prev, matchTime: e.target.value }))}
+                className="h-11"
+                placeholder="Ex: 15:30"
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4">

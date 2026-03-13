@@ -34,11 +34,12 @@ function mapMatch(row: any): Match {
     homeTeamId: row.home_team_id, awayTeamId: row.away_team_id,
     homeGoals: row.home_goals, awayGoals: row.away_goals,
     homeWO: row.home_wo, awayWO: row.away_wo,
-    round: row.round, played: row.played, createdAt: row.created_at,
+    round: row.round, played: row.played, matchTime: row.match_time || undefined,
+    createdAt: row.created_at,
   };
 }
 function mapRound(row: any): Round {
-  return { id: row.id, championshipId: row.championship_id, gameDayId: row.game_day_id || undefined, number: row.number, name: row.name || undefined, createdAt: row.created_at };
+  return { id: row.id, championshipId: row.championship_id, gameDayId: row.game_day_id || undefined, number: row.number, name: row.name || undefined, date: row.date || undefined, createdAt: row.created_at };
 }
 function mapGameDay(row: any): GameDay {
   return { id: row.id, championshipId: row.championship_id, name: row.name, teamIds: row.team_ids || [], createdAt: row.created_at };
@@ -342,11 +343,16 @@ const SharedChampionship = () => {
                 <CardContent className="space-y-4">
                   {generalRounds.map(round => {
                     const roundMatches = matches.filter(m => m.round === round.number && !m.gameDayId);
+                    const dateStr = round.date ? (() => { const [y,mo,d] = round.date!.split('-'); return `${d}/${mo}/${y}`; })() : null;
                     return (
                       <div key={round.id} className="space-y-2">
-                        <h4 className="text-sm font-semibold text-muted-foreground">{round.name || `Rodada ${round.number}`}</h4>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-semibold text-muted-foreground">{round.name || `Rodada ${round.number}`}</h4>
+                          {dateStr && <span className="text-xs text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full">{dateStr}</span>}
+                        </div>
                         {roundMatches.map(match => (
                           <div key={match.id} className="flex items-center justify-between p-2 sm:p-3 rounded-lg bg-muted/30 border border-border/30">
+                            {match.matchTime && <span className="text-xs text-muted-foreground font-medium min-w-[40px] text-center flex-shrink-0">{match.matchTime}</span>}
                             <span className="text-xs sm:text-sm font-medium truncate flex-1 text-right">{getTeamName(match.homeTeamId)}</span>
                             <span className="mx-2 sm:mx-3 text-xs sm:text-sm font-bold text-primary min-w-[40px] sm:min-w-[50px] text-center whitespace-nowrap">
                               {match.homeGoals !== null ? `${match.homeGoals} x ${match.awayGoals}` : match.homeWO ? 'W.O.' : match.awayWO ? 'W.O.' : '— x —'}
@@ -402,11 +408,16 @@ const SharedChampionship = () => {
                           <CardContent className="space-y-4">
                             {dayRounds.map(round => {
                               const roundMatches = dayMatches.filter(m => m.round === round.number);
+                              const dateStr = round.date ? (() => { const [y,mo,d] = round.date!.split('-'); return `${d}/${mo}/${y}`; })() : null;
                               return (
                                 <div key={round.id} className="space-y-2">
-                                  <h4 className="text-sm font-semibold text-muted-foreground">{round.name || `Rodada ${round.number}`}</h4>
+                                  <div className="flex items-center gap-2">
+                                    <h4 className="text-sm font-semibold text-muted-foreground">{round.name || `Rodada ${round.number}`}</h4>
+                                    {dateStr && <span className="text-xs text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full">{dateStr}</span>}
+                                  </div>
                                   {roundMatches.map(match => (
                                     <div key={match.id} className="flex items-center justify-between p-2 sm:p-3 rounded-lg bg-muted/30 border border-border/30">
+                                      {match.matchTime && <span className="text-xs text-muted-foreground font-medium min-w-[40px] text-center flex-shrink-0">{match.matchTime}</span>}
                                       <span className="text-xs sm:text-sm font-medium truncate flex-1 text-right">{getTeamName(match.homeTeamId)}</span>
                                       <span className="mx-2 sm:mx-3 text-xs sm:text-sm font-bold text-primary min-w-[40px] sm:min-w-[50px] text-center whitespace-nowrap">
                                         {match.homeGoals !== null ? `${match.homeGoals} x ${match.awayGoals}` : match.homeWO ? 'W.O.' : match.awayWO ? 'W.O.' : '— x —'}
