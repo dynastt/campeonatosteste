@@ -39,7 +39,7 @@ function mapMatch(row: any): Match {
   };
 }
 function mapRound(row: any): Round {
-  return { id: row.id, championshipId: row.championship_id, gameDayId: row.game_day_id || undefined, number: row.number, name: row.name || undefined, createdAt: row.created_at };
+  return { id: row.id, championshipId: row.championship_id, gameDayId: row.game_day_id || undefined, number: row.number, name: row.name || undefined, date: row.date || undefined, createdAt: row.created_at };
 }
 function mapGameDay(row: any): GameDay {
   return { id: row.id, championshipId: row.championship_id, name: row.name, teamIds: row.team_ids || [], createdAt: row.created_at };
