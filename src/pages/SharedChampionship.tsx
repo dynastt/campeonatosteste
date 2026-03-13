@@ -34,7 +34,8 @@ function mapMatch(row: any): Match {
     homeTeamId: row.home_team_id, awayTeamId: row.away_team_id,
     homeGoals: row.home_goals, awayGoals: row.away_goals,
     homeWO: row.home_wo, awayWO: row.away_wo,
-    round: row.round, played: row.played, createdAt: row.created_at,
+    round: row.round, played: row.played, matchTime: row.match_time || undefined,
+    createdAt: row.created_at,
   };
 }
 function mapRound(row: any): Round {
