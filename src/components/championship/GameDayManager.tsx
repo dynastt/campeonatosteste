@@ -51,6 +51,7 @@ const GameDayManager = ({
   onUpdateGameDayTeams,
   onCreateRound,
   onDeleteRound,
+  onUpdateRound,
   onCreateMatch,
   onUpdateMatch,
   onDeleteMatch,
