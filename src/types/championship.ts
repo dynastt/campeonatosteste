@@ -42,6 +42,7 @@ export interface Match {
   awayWO: boolean;
   round: number;
   played: boolean;
+  matchTime?: string;
   createdAt: string;
 }
 
