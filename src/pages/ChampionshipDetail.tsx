@@ -362,6 +362,7 @@ const ChampionshipDetail = () => {
                   championshipId={championship.id}
                   onCreateRound={(name) => createRound(championship.id, name)}
                   onDeleteRound={deleteRound}
+                  onUpdateRound={updateRound}
                   onCreateMatch={createMatch}
                   onUpdateMatch={updateMatch}
                   onDeleteMatch={deleteMatch}
