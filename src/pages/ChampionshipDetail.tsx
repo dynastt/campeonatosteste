@@ -107,6 +107,7 @@ const ChampionshipDetail = () => {
     updateTeam,
     getTeamsNotInChampionship,
     createRound,
+    updateRound,
     deleteRound,
     createMatch,
     updateMatch,
