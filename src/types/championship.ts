@@ -52,6 +52,7 @@ export interface Round {
   gameDayId?: string;
   number: number;
   name?: string;
+  date?: string;
   createdAt: string;
 }
 
