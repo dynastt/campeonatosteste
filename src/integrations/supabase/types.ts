@@ -200,6 +200,7 @@ export type Database = {
           home_team_id: string
           home_wo: boolean
           id: string
+          match_time: string | null
           played: boolean
           round: number
           user_id: string
@@ -215,6 +216,7 @@ export type Database = {
           home_team_id: string
           home_wo?: boolean
           id?: string
+          match_time?: string | null
           played?: boolean
           round: number
           user_id: string
@@ -230,6 +232,7 @@ export type Database = {
           home_team_id?: string
           home_wo?: boolean
           id?: string
+          match_time?: string | null
           played?: boolean
           round?: number
           user_id?: string
@@ -269,6 +272,7 @@ export type Database = {
         Row: {
           championship_id: string
           created_at: string
+          date: string | null
           game_day_id: string | null
           id: string
           name: string | null
@@ -278,6 +282,7 @@ export type Database = {
         Insert: {
           championship_id: string
           created_at?: string
+          date?: string | null
           game_day_id?: string | null
           id?: string
           name?: string | null
@@ -287,6 +292,7 @@ export type Database = {
         Update: {
           championship_id?: string
           created_at?: string
+          date?: string | null
           game_day_id?: string | null
           id?: string
           name?: string | null
