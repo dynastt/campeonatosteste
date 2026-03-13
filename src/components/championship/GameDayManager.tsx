@@ -29,6 +29,7 @@ interface GameDayManagerProps {
   onUpdateGameDayTeams: (gameDayId: string, teamIds: string[]) => void;
   onCreateRound: (name?: string, gameDayId?: string) => void;
   onDeleteRound: (id: string) => void;
+  onUpdateRound?: (id: string, data: Partial<Round>) => void;
   onCreateMatch: (data: Omit<Match, 'id' | 'createdAt'>) => void;
   onUpdateMatch: (id: string, data: Partial<Match>) => void;
   onDeleteMatch: (id: string) => void;
