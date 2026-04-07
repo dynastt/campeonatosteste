@@ -484,7 +484,13 @@ const SharedChampionship = () => {
                       return (
                         <>
                           {phaseMatches.slice(0, half).map(renderMatch)}
-                          {showSeparator && <div className="border-t border-border/50 my-1" />}
+                          {showSeparator && (
+                            <div className="flex items-center gap-3 my-1">
+                              <div className="flex-1 h-[2px] bg-primary/40 rounded-full" />
+                              <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">2ª Semana</span>
+                              <div className="flex-1 h-[2px] bg-primary/40 rounded-full" />
+                            </div>
+                          )}
                           {phaseMatches.slice(half).map(renderMatch)}
                         </>
                       );
