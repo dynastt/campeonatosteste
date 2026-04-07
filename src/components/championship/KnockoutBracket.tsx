@@ -417,21 +417,45 @@ const KnockoutBracket = ({
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className={`grid gap-3 ${
-                  count === 1 ? 'grid-cols-1 max-w-md mx-auto' :
-                  count <= 4 ? 'grid-cols-1 sm:grid-cols-2 max-w-2xl mx-auto' :
-                  count <= 8 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4' :
-                  'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
-                }`}>
-                  {Array.from({ length: count }, (_, i) => {
-                    const match = phaseMatches.find(m => m.position === i + 1);
-                    return (
-                      <div key={i}>
-                        {renderMatchCard(match, phase.key, i + 1)}
+                {(() => {
+                  const half = Math.ceil(count / 2);
+                  const showSeparator = count > 1;
+                  const gridClass = count === 1 ? 'grid-cols-1 max-w-md mx-auto' :
+                    count <= 4 ? 'grid-cols-1 sm:grid-cols-2 max-w-2xl mx-auto' :
+                    count <= 8 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4' :
+                    'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4';
+
+                  return (
+                    <div className="space-y-4">
+                      <div className={`grid gap-3 ${gridClass}`}>
+                        {Array.from({ length: half }, (_, i) => {
+                          const match = phaseMatches.find(m => m.position === i + 1);
+                          return (
+                            <div key={i}>
+                              {renderMatchCard(match, phase.key, i + 1)}
+                            </div>
+                          );
+                        })}
                       </div>
-                    );
-                  })}
-                </div>
+                      {showSeparator && (
+                        <>
+                          <div className="border-t border-border/50 my-2" />
+                          <div className={`grid gap-3 ${gridClass}`}>
+                            {Array.from({ length: count - half }, (_, i) => {
+                              const pos = half + i + 1;
+                              const match = phaseMatches.find(m => m.position === pos);
+                              return (
+                                <div key={pos}>
+                                  {renderMatchCard(match, phase.key, pos)}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  );
+                })()}
               </CardContent>
             </Card>
           );

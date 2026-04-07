@@ -465,19 +465,30 @@ const SharedChampionship = () => {
                 <Card key={phase} className="bg-gradient-card border-border/50">
                   <CardHeader><CardTitle className="flex items-center gap-2"><Swords className="h-5 w-5 text-primary" />{PHASE_LABELS[phase]}</CardTitle></CardHeader>
                   <CardContent className="space-y-3">
-                    {phaseMatches.map(match => (
-                      <div key={match.id} className="flex items-center justify-between p-2 sm:p-3 rounded-lg bg-muted/30 border border-border/30">
-                        <span className={`text-xs sm:text-sm font-medium truncate flex-1 text-right ${match.winnerId === match.homeTeamId ? 'text-primary font-bold' : ''}`}>
-                          {getTeamName(match.homeTeamId)}
-                        </span>
-                        <span className="mx-2 sm:mx-3 text-xs sm:text-sm font-bold text-primary min-w-[40px] sm:min-w-[50px] text-center whitespace-nowrap">
-                          {match.homeGoals !== null ? `${match.homeGoals} x ${match.awayGoals}` : '— x —'}
-                        </span>
-                        <span className={`text-xs sm:text-sm font-medium truncate flex-1 ${match.winnerId === match.awayTeamId ? 'text-primary font-bold' : ''}`}>
-                          {getTeamName(match.awayTeamId)}
-                        </span>
-                      </div>
-                    ))}
+                    {(() => {
+                      const half = Math.ceil(phaseMatches.length / 2);
+                      const showSeparator = phaseMatches.length > 1;
+                      const renderMatch = (match: KnockoutMatch) => (
+                        <div key={match.id} className="flex items-center justify-between p-2 sm:p-3 rounded-lg bg-muted/30 border border-border/30">
+                          <span className={`text-xs sm:text-sm font-medium truncate flex-1 text-right ${match.winnerId === match.homeTeamId ? 'text-primary font-bold' : ''}`}>
+                            {getTeamName(match.homeTeamId)}
+                          </span>
+                          <span className="mx-2 sm:mx-3 text-xs sm:text-sm font-bold text-primary min-w-[40px] sm:min-w-[50px] text-center whitespace-nowrap">
+                            {match.homeGoals !== null ? `${match.homeGoals} x ${match.awayGoals}` : '— x —'}
+                          </span>
+                          <span className={`text-xs sm:text-sm font-medium truncate flex-1 ${match.winnerId === match.awayTeamId ? 'text-primary font-bold' : ''}`}>
+                            {getTeamName(match.awayTeamId)}
+                          </span>
+                        </div>
+                      );
+                      return (
+                        <>
+                          {phaseMatches.slice(0, half).map(renderMatch)}
+                          {showSeparator && <div className="border-t border-border/50 my-1" />}
+                          {phaseMatches.slice(half).map(renderMatch)}
+                        </>
+                      );
+                    })()}
                   </CardContent>
                 </Card>
               );
