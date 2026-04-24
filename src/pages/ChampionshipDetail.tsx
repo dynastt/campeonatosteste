@@ -207,11 +207,10 @@ const ChampionshipDetail = () => {
 
   return (
     <div className="min-h-screen bg-gradient-hero">
-      {/* Patrocinadores */}
-      <SponsorsBar sponsors={championship.sponsors} />
-
       {/* Header */}
       <header className="border-b bg-card/80 backdrop-blur-xl sticky top-0 z-50 shadow-sm">
+        {/* Patrocinadores: faixa fina dentro do header sticky para aparecer em todas as abas */}
+        <SponsorsBar sponsors={championship.sponsors} />
         <div className="container mx-auto px-4 py-4 sm:py-6">
           <Link to="/" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-3 sm:mb-4 transition-colors text-sm">
             <ArrowLeft className="h-4 w-4" />
@@ -354,16 +353,14 @@ const ChampionshipDetail = () => {
                     Gerenciar Eliminatórias
                   </Button>
                   <ShareLinkButton championshipId={championship.id} userId={user?.id} />
-                  <div className="pt-1 flex justify-end">
-                    <AnnouncementManager
-                      championshipId={championship.id}
-                      championshipName={championship.name}
-                      championshipAnnouncement={getChampionshipAnnouncement(championship.id)}
-                      globalAnnouncement={getGlobalAnnouncement()}
-                      onSave={upsertAnnouncement}
-                      onDelete={deleteAnnouncement}
-                    />
-                  </div>
+                  <AnnouncementManager
+                    championshipId={championship.id}
+                    championshipName={championship.name}
+                    championshipAnnouncement={getChampionshipAnnouncement(championship.id)}
+                    globalAnnouncement={getGlobalAnnouncement()}
+                    onSave={upsertAnnouncement}
+                    onDelete={deleteAnnouncement}
+                  />
                 </CardContent>
               </Card>
             </div>
