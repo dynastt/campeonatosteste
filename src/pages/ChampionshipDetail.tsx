@@ -15,6 +15,9 @@ import RoundsList from '@/components/championship/RoundsList';
 import AddTeamDialog from '@/components/championship/AddTeamDialog';
 import KnockoutBracket from '@/components/championship/KnockoutBracket';
 import GameDayManager from '@/components/championship/GameDayManager';
+import SponsorsBar from '@/components/championship/SponsorsBar';
+import SponsorsManager from '@/components/championship/SponsorsManager';
+import AnnouncementManager from '@/components/championship/AnnouncementManager';
 import { toast } from 'sonner';
 
 const PHASE_LABELS: Record<string, string> = {
@@ -120,6 +123,11 @@ const ChampionshipDetail = () => {
     createKnockoutMatch,
     updateKnockoutMatch,
     deleteKnockoutMatch,
+    updateChampionship,
+    getGlobalAnnouncement,
+    getChampionshipAnnouncement,
+    upsertAnnouncement,
+    deleteAnnouncement,
   } = useChampionships();
 
   const [isAddTeamOpen, setIsAddTeamOpen] = useState(false);
