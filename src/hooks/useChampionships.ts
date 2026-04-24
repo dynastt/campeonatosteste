@@ -436,12 +436,14 @@ export function useChampionships() {
       home_goals: data.homeGoals, away_goals: data.awayGoals,
       home_wo: data.homeWO, away_wo: data.awayWO,
       winner_id: data.winnerId,
+      match_time: data.matchTime || null,
     }).select().single();
     if (error || !row) return null;
     const mapped = mapKnockoutMatch(row);
     setKnockoutMatches(prev => [...prev, mapped]);
+    broadcastUpdate(data.championshipId);
     return mapped;
-  }, [user]);
+  }, [user, broadcastUpdate]);
 
   const updateKnockoutMatch = useCallback(async (id: string, data: Partial<KnockoutMatch>) => {
     const updateData: any = {};
@@ -452,6 +454,7 @@ export function useChampionships() {
     if (data.homeWO !== undefined) updateData.home_wo = data.homeWO;
     if (data.awayWO !== undefined) updateData.away_wo = data.awayWO;
     if (data.winnerId !== undefined) updateData.winner_id = data.winnerId;
+    if (data.matchTime !== undefined) updateData.match_time = data.matchTime || null;
     await supabase.from('knockout_matches').update(updateData).eq('id', id);
     setKnockoutMatches(prev => prev.map(m => m.id === id ? { ...m, ...data } : m));
     const km = knockoutMatches.find(m => m.id === id);
@@ -459,9 +462,11 @@ export function useChampionships() {
   }, [knockoutMatches, broadcastUpdate]);
 
   const deleteKnockoutMatch = useCallback(async (id: string) => {
+    const km = knockoutMatches.find(m => m.id === id);
     await supabase.from('knockout_matches').delete().eq('id', id);
     setKnockoutMatches(prev => prev.filter(m => m.id !== id));
-  }, []);
+    if (km) broadcastUpdate(km.championshipId);
+  }, [knockoutMatches, broadcastUpdate]);
 
   const getChampionshipKnockoutMatches = useCallback((championshipId: string) => {
     return knockoutMatches.filter(m => m.championshipId === championshipId);
