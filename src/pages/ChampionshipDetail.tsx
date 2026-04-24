@@ -354,9 +354,25 @@ const ChampionshipDetail = () => {
                     Gerenciar Eliminatórias
                   </Button>
                   <ShareLinkButton championshipId={championship.id} userId={user?.id} />
+                  <div className="pt-1 flex justify-end">
+                    <AnnouncementManager
+                      championshipId={championship.id}
+                      championshipName={championship.name}
+                      championshipAnnouncement={getChampionshipAnnouncement(championship.id)}
+                      globalAnnouncement={getGlobalAnnouncement()}
+                      onSave={upsertAnnouncement}
+                      onDelete={deleteAnnouncement}
+                    />
+                  </div>
                 </CardContent>
               </Card>
             </div>
+
+            <SponsorsManager
+              championshipId={championship.id}
+              sponsors={championship.sponsors || []}
+              onChange={(next) => updateChampionship(championship.id, { sponsors: next })}
+            />
 
             <Card className="bg-gradient-card border-border/50">
               <CardHeader>
