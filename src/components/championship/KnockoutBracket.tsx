@@ -38,6 +38,8 @@ const KnockoutBracket = ({
   championshipId,
   enabledPhases,
   allRegularMatches,
+  knockoutPhaseDates,
+  onUpdatePhaseDates,
   onCreateMatch,
   onUpdateMatch,
   onDeleteMatch,
@@ -54,6 +56,7 @@ const KnockoutBracket = ({
     awayGoals: null as number | null,
     homeWO: false,
     awayWO: false,
+    matchTime: '',
   });
 
   const phases = useMemo(() => {
