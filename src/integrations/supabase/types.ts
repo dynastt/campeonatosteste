@@ -57,10 +57,12 @@ export type Database = {
           game_day_names: string[] | null
           game_days: string[] | null
           id: string
+          knockout_phase_dates: Json
           knockout_phases: string[] | null
           logo: string | null
           name: string
           qualifying_teams: Json | null
+          sponsors: string[]
           start_date: string | null
           team_ids: string[] | null
           user_id: string
@@ -72,10 +74,12 @@ export type Database = {
           game_day_names?: string[] | null
           game_days?: string[] | null
           id?: string
+          knockout_phase_dates?: Json
           knockout_phases?: string[] | null
           logo?: string | null
           name: string
           qualifying_teams?: Json | null
+          sponsors?: string[]
           start_date?: string | null
           team_ids?: string[] | null
           user_id: string
@@ -87,10 +91,12 @@ export type Database = {
           game_day_names?: string[] | null
           game_days?: string[] | null
           id?: string
+          knockout_phase_dates?: Json
           knockout_phases?: string[] | null
           logo?: string | null
           name?: string
           qualifying_teams?: Json | null
+          sponsors?: string[]
           start_date?: string | null
           team_ids?: string[] | null
           user_id?: string
@@ -143,6 +149,7 @@ export type Database = {
           home_team_id: string | null
           home_wo: boolean
           id: string
+          match_time: string | null
           phase: string
           position: number
           user_id: string
@@ -158,6 +165,7 @@ export type Database = {
           home_team_id?: string | null
           home_wo?: boolean
           id?: string
+          match_time?: string | null
           phase: string
           position: number
           user_id: string
@@ -173,6 +181,7 @@ export type Database = {
           home_team_id?: string | null
           home_wo?: boolean
           id?: string
+          match_time?: string | null
           phase?: string
           position?: number
           user_id?: string
@@ -264,6 +273,53 @@ export type Database = {
             columns: ["home_team_id"]
             isOneToOne: false
             referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      public_announcements: {
+        Row: {
+          championship_id: string | null
+          created_at: string
+          description: string | null
+          expires_at: string | null
+          id: string
+          image_url: string | null
+          is_global: boolean
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          championship_id?: string | null
+          created_at?: string
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          image_url?: string | null
+          is_global?: boolean
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          championship_id?: string | null
+          created_at?: string
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          image_url?: string | null
+          is_global?: boolean
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_announcements_championship_id_fkey"
+            columns: ["championship_id"]
+            isOneToOne: false
+            referencedRelation: "championships"
             referencedColumns: ["id"]
           },
         ]
