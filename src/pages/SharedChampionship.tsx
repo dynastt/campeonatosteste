@@ -505,13 +505,22 @@ const SharedChampionship = () => {
                 </div>
               );
 
-              const HalfHeader = ({ text, date }: { text: string; date: string }) => (
-                <div className="flex items-center gap-2 my-2">
-                  <div className="h-[2px] flex-1 bg-primary/40 rounded-full" />
-                  <span className="text-xs font-semibold text-foreground whitespace-nowrap px-1">
-                    {text}{date && <span className="text-muted-foreground font-normal"> · {fmt(date)}</span>}
+              // Cabeçalho da metade da fase no link público — chip alinhado à esquerda + data.
+              const HalfHeader = ({ text, count: halfCount, date }: { text: string; count: number; date: string }) => (
+                <div className="flex flex-wrap items-center gap-2 my-3 pb-2 border-b-2 border-primary/30">
+                  <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-semibold">
+                    <Swords className="h-3.5 w-3.5" />
+                    {text}
+                    <span className="text-xs font-normal text-primary/70">
+                      ({halfCount} {halfCount === 1 ? 'jogo' : 'jogos'})
+                    </span>
                   </span>
-                  <div className="h-[2px] flex-1 bg-primary/40 rounded-full" />
+                  {date && (
+                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                      <Calendar className="h-3 w-3" />
+                      {fmt(date)}
+                    </span>
+                  )}
                 </div>
               );
 
@@ -529,9 +538,9 @@ const SharedChampionship = () => {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    {showTwoHalves && <HalfHeader text={`${label} 1`} date={date1} />}
+                    {showTwoHalves && <HalfHeader text={`${label} 1`} count={half} date={date1} />}
                     {phaseMatches.slice(0, half).map(renderMatch)}
-                    {showTwoHalves && <HalfHeader text={`${label} 2`} date={date2} />}
+                    {showTwoHalves && <HalfHeader text={`${label} 2`} count={phaseMatches.length - half} date={date2} />}
                     {phaseMatches.slice(half).map(renderMatch)}
                   </CardContent>
                 </Card>

@@ -435,18 +435,31 @@ const KnockoutBracket = ({
           const formatDate = (iso: string) =>
             iso ? (() => { const [y, mo, d] = iso.split('-'); return `${d}/${mo}/${y}`; })() : '';
 
-          const HalfHeader = ({ label, dateKey, date }: { label: string; dateKey: string; date: string }) => (
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 my-2">
-              <div className="flex items-center gap-2 flex-1">
-                <div className="h-[2px] flex-1 bg-primary/40 rounded-full" />
-                <span className="text-xs font-semibold text-foreground whitespace-nowrap px-1">
+          // Cabeçalho da metade da fase: chip com título + data ao lado, alinhado à esquerda.
+          const HalfHeader = ({
+            label,
+            count: halfCount,
+            dateKey,
+            date,
+          }: { label: string; count: number; dateKey: string; date: string }) => (
+            <div className="flex flex-wrap items-center justify-between gap-2 my-3 pb-2 border-b-2 border-primary/30">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-semibold">
+                  <Swords className="h-3.5 w-3.5" />
                   {label}
+                  <span className="text-xs font-normal text-primary/70">
+                    ({halfCount} {halfCount === 1 ? 'jogo' : 'jogos'})
+                  </span>
                 </span>
-                <div className="h-[2px] flex-1 bg-primary/40 rounded-full" />
+                {date && (
+                  <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                    <Calendar className="h-3 w-3" />
+                    {formatDate(date)}
+                  </span>
+                )}
               </div>
               {onUpdatePhaseDates && (
                 <div className="flex items-center gap-1.5 text-xs">
-                  <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                   <Input
                     type="date"
                     value={date}
@@ -499,7 +512,7 @@ const KnockoutBracket = ({
                   return (
                     <div className="space-y-4">
                       {showTwoHalves && (
-                        <HalfHeader label={`${phase.label} 1`} dateKey={dateKey1} date={date1} />
+                        <HalfHeader label={`${phase.label} 1`} count={half} dateKey={dateKey1} date={date1} />
                       )}
                       <div className={`grid gap-3 ${gridClass}`}>
                         {Array.from({ length: half }, (_, i) => {
@@ -513,7 +526,7 @@ const KnockoutBracket = ({
                       </div>
                       {showTwoHalves && (
                         <>
-                          <HalfHeader label={`${phase.label} 2`} dateKey={dateKey2} date={date2} />
+                          <HalfHeader label={`${phase.label} 2`} count={count - half} dateKey={dateKey2} date={date2} />
                           <div className={`grid gap-3 ${gridClass}`}>
                             {Array.from({ length: count - half }, (_, i) => {
                               const pos = half + i + 1;
