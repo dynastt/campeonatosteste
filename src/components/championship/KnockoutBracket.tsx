@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Edit2, Trophy, AlertTriangle, Swords, Trash2 } from 'lucide-react';
+import { Plus, Edit2, Trophy, AlertTriangle, Swords, Trash2, Calendar, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface KnockoutBracketProps {
@@ -18,6 +18,8 @@ interface KnockoutBracketProps {
   championshipId: string;
   enabledPhases: KnockoutPhase[];
   allRegularMatches: Match[]; // game day + general round matches
+  knockoutPhaseDates?: Record<string, string>;
+  onUpdatePhaseDates?: (next: Record<string, string>) => void;
   onCreateMatch: (data: Omit<KnockoutMatch, 'id' | 'createdAt'>) => void;
   onUpdateMatch: (id: string, data: Partial<KnockoutMatch>) => void;
   onDeleteMatch: (id: string) => void;
