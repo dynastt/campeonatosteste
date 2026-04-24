@@ -127,15 +127,16 @@ const AnnouncementManager = ({
   return (
     <>
       <Button
-        variant="ghost"
-        size="sm"
-        className="gap-1.5 text-muted-foreground hover:text-foreground"
+        variant="outline"
+        className="w-full gap-2 relative"
         onClick={() => setOpen(true)}
-        title="Aviso para visitantes do link público"
+        title="Criar um aviso (popup) para os visitantes do link público"
       >
-        <Megaphone className="h-3.5 w-3.5" />
-        <span className="text-xs">{hasAny ? 'Aviso ativo' : 'Aviso'}</span>
-        {hasAny && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
+        <Megaphone className="h-4 w-4" />
+        {hasAny ? 'Aviso ativo (editar)' : 'Criar aviso para visitantes'}
+        {hasAny && (
+          <span className="absolute right-3 h-2 w-2 rounded-full bg-primary animate-pulse" />
+        )}
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
