@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Championship, Team, Match, Round, GameDay, KnockoutMatch, KnockoutPhase } from '@/types/championship';
+import { Championship, Team, Match, Round, GameDay, KnockoutMatch, KnockoutPhase, Announcement } from '@/types/championship';
 import { useAuth } from './useAuth';
 import { createTeamSchema, createChampionshipSchema, updateMatchSchema, teamNameSchema, logoUrlSchema, championshipNameSchema, descriptionSchema, goalsSchema, gameDayNameSchema, validateOrThrow } from '@/utils/validation';
 import { z } from 'zod';
@@ -17,6 +17,8 @@ function mapChampionship(row: any): Championship {
     gameDayNames: row.game_day_names || [],
     qualifyingTeams: row.qualifying_teams || {},
     logo: row.logo || undefined,
+    sponsors: row.sponsors || [],
+    knockoutPhaseDates: row.knockout_phase_dates || {},
     deletedAt: row.deleted_at || undefined,
     createdAt: row.created_at,
   };
@@ -58,7 +60,23 @@ function mapKnockoutMatch(row: any): KnockoutMatch {
     position: row.position, homeTeamId: row.home_team_id, awayTeamId: row.away_team_id,
     homeGoals: row.home_goals, awayGoals: row.away_goals,
     homeWO: row.home_wo, awayWO: row.away_wo,
-    winnerId: row.winner_id, createdAt: row.created_at,
+    winnerId: row.winner_id, matchTime: row.match_time || undefined,
+    createdAt: row.created_at,
+  };
+}
+
+function mapAnnouncement(row: any): Announcement {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    championshipId: row.championship_id || null,
+    title: row.title,
+    description: row.description || undefined,
+    imageUrl: row.image_url || undefined,
+    expiresAt: row.expires_at || undefined,
+    isGlobal: !!row.is_global,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 }
 
