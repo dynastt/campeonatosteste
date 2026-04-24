@@ -7,6 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Trophy, Users, Calendar, LayoutGrid, Swords, Loader2, LinkIcon, Shield } from 'lucide-react';
 import StandingsTable from '@/components/championship/StandingsTable';
+import SponsorsBar from '@/components/championship/SponsorsBar';
+import AnnouncementPopup from '@/components/championship/AnnouncementPopup';
 import logoLffc from '@/assets/logo-lffc.png';
 
 const PHASE_LABELS: Record<string, string> = {
@@ -24,6 +26,8 @@ function mapChampionship(row: any): Championship {
     gameDays: row.game_days || [], knockoutPhases: (row.knockout_phases || []) as KnockoutPhase[],
     gameDayNames: row.game_day_names || [], qualifyingTeams: row.qualifying_teams || {},
     logo: row.logo || undefined, deletedAt: row.deleted_at || undefined,
+    sponsors: row.sponsors || [],
+    knockoutPhaseDates: row.knockout_phase_dates || {},
     createdAt: row.created_at,
   };
 }
@@ -49,7 +53,8 @@ function mapKnockoutMatch(row: any): KnockoutMatch {
     id: row.id, championshipId: row.championship_id, phase: row.phase as KnockoutPhase,
     position: row.position, homeTeamId: row.home_team_id, awayTeamId: row.away_team_id,
     homeGoals: row.home_goals, awayGoals: row.away_goals,
-    homeWO: row.home_wo, awayWO: row.away_wo, winnerId: row.winner_id, createdAt: row.created_at,
+    homeWO: row.home_wo, awayWO: row.away_wo, winnerId: row.winner_id,
+    matchTime: row.match_time || undefined, createdAt: row.created_at,
   };
 }
 
