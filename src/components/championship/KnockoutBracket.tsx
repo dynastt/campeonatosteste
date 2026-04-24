@@ -179,7 +179,16 @@ const KnockoutBracket = ({
           </Button>
         </div>
 
-        <div className="space-y-2 mt-4">
+        <div className="flex items-center gap-2 mt-1 text-[11px] text-muted-foreground font-medium">
+          <span>Jogo {position}</span>
+          {match.matchTime && (
+            <span className="inline-flex items-center gap-1 bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+              <Clock className="h-3 w-3" /> {match.matchTime}
+            </span>
+          )}
+        </div>
+
+        <div className="space-y-2 mt-2">
           <div className={`flex items-center justify-between text-sm ${match.winnerId === match.homeTeamId ? 'font-bold text-primary' : ''}`}>
             <div className="flex items-center gap-2 flex-1 min-w-0">
               {homeTeam?.logo ? (
