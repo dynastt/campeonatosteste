@@ -243,6 +243,13 @@ const SharedChampionship = () => {
     if (gameDays.length > 0 && !activeGameDay) setActiveGameDay(gameDays[0].id);
   }, [gameDays, activeGameDay]);
 
+  // Visitantes do link público abrem direto na aba "Dias de Jogo" quando ela existir.
+  useEffect(() => {
+    if (tabInitialized || loading) return;
+    if (gameDays.length > 0) setActiveTab('game-days');
+    setTabInitialized(true);
+  }, [gameDays.length, loading, tabInitialized]);
+
   if (loading) return (
     <div className="min-h-screen bg-gradient-hero flex items-center justify-center">
       <Loader2 className="h-8 w-8 animate-spin text-primary" />
