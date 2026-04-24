@@ -7,6 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Trophy, Users, Calendar, LayoutGrid, Swords, Loader2, LinkIcon, Shield } from 'lucide-react';
 import StandingsTable from '@/components/championship/StandingsTable';
+import SponsorsBar from '@/components/championship/SponsorsBar';
+import AnnouncementPopup from '@/components/championship/AnnouncementPopup';
 import logoLffc from '@/assets/logo-lffc.png';
 
 const PHASE_LABELS: Record<string, string> = {
@@ -24,6 +26,8 @@ function mapChampionship(row: any): Championship {
     gameDays: row.game_days || [], knockoutPhases: (row.knockout_phases || []) as KnockoutPhase[],
     gameDayNames: row.game_day_names || [], qualifyingTeams: row.qualifying_teams || {},
     logo: row.logo || undefined, deletedAt: row.deleted_at || undefined,
+    sponsors: row.sponsors || [],
+    knockoutPhaseDates: row.knockout_phase_dates || {},
     createdAt: row.created_at,
   };
 }
@@ -49,7 +53,8 @@ function mapKnockoutMatch(row: any): KnockoutMatch {
     id: row.id, championshipId: row.championship_id, phase: row.phase as KnockoutPhase,
     position: row.position, homeTeamId: row.home_team_id, awayTeamId: row.away_team_id,
     homeGoals: row.home_goals, awayGoals: row.away_goals,
-    homeWO: row.home_wo, awayWO: row.away_wo, winnerId: row.winner_id, createdAt: row.created_at,
+    homeWO: row.home_wo, awayWO: row.away_wo, winnerId: row.winner_id,
+    matchTime: row.match_time || undefined, createdAt: row.created_at,
   };
 }
 
@@ -64,6 +69,8 @@ const SharedChampionship = () => {
   const [gameDays, setGameDays] = useState<GameDay[]>([]);
   const [knockoutMatches, setKnockoutMatches] = useState<KnockoutMatch[]>([]);
   const [activeTab, setActiveTab] = useState('overview');
+  const [tabInitialized, setTabInitialized] = useState(false);
+  const [announcement, setAnnouncement] = useState<any>(null);
   const [activeGameDay, setActiveGameDay] = useState('');
   const [standingsMode, setStandingsMode] = useState<string>('points');
   const [gameDayStandingsMode, setGameDayStandingsMode] = useState<Record<string, string>>({});
@@ -88,6 +95,7 @@ const SharedChampionship = () => {
       setRounds(data.rounds.map(mapRound));
       setGameDays(data.gameDays.map(mapGameDay));
       setKnockoutMatches(data.knockoutMatches.map(mapKnockoutMatch));
+      setAnnouncement(data.announcement || null);
       setError(null);
     } catch {
       setError('Erro de conexão');
@@ -235,6 +243,13 @@ const SharedChampionship = () => {
     if (gameDays.length > 0 && !activeGameDay) setActiveGameDay(gameDays[0].id);
   }, [gameDays, activeGameDay]);
 
+  // Visitantes do link público abrem direto na aba "Dias de Jogo" quando ela existir.
+  useEffect(() => {
+    if (tabInitialized || loading) return;
+    if (gameDays.length > 0) setActiveTab('game-days');
+    setTabInitialized(true);
+  }, [gameDays.length, loading, tabInitialized]);
+
   if (loading) return (
     <div className="min-h-screen bg-gradient-hero flex items-center justify-center">
       <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -262,6 +277,8 @@ const SharedChampionship = () => {
 
   return (
     <div className="min-h-screen bg-gradient-hero">
+      <AnnouncementPopup announcement={announcement} />
+      <SponsorsBar sponsors={championship.sponsors} />
       <header className="border-b bg-card/80 backdrop-blur-xl sticky top-0 z-50 shadow-sm">
         <div className="container mx-auto px-4 py-4 sm:py-6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -461,38 +478,61 @@ const SharedChampionship = () => {
             {(championship.knockoutPhases || []).map(phase => {
               const phaseMatches = knockoutMatches.filter(m => m.phase === phase).sort((a, b) => a.position - b.position);
               if (phaseMatches.length === 0) return null;
+              const label = PHASE_LABELS[phase] || phase;
+              const half = Math.ceil(phaseMatches.length / 2);
+              const showTwoHalves = phaseMatches.length > 1;
+              const dateMap = championship.knockoutPhaseDates || {};
+              const date1 = dateMap[`${phase}-1`] || '';
+              const date2 = dateMap[`${phase}-2`] || '';
+              const fmt = (iso: string) => iso ? (() => { const [y, mo, d] = iso.split('-'); return `${d}/${mo}/${y}`; })() : '';
+
+              const renderMatch = (match: KnockoutMatch) => (
+                <div key={match.id} className="flex items-center justify-between p-2 sm:p-3 rounded-lg bg-muted/30 border border-border/30">
+                  {match.matchTime && (
+                    <span className="text-xs text-muted-foreground font-medium min-w-[42px] text-center flex-shrink-0">
+                      {match.matchTime}
+                    </span>
+                  )}
+                  <span className={`text-xs sm:text-sm font-medium truncate flex-1 text-right ${match.winnerId === match.homeTeamId ? 'text-primary font-bold' : ''}`}>
+                    {getTeamName(match.homeTeamId)}
+                  </span>
+                  <span className="mx-2 sm:mx-3 text-xs sm:text-sm font-bold text-primary min-w-[40px] sm:min-w-[50px] text-center whitespace-nowrap">
+                    {match.homeGoals !== null ? `${match.homeGoals} x ${match.awayGoals}` : '— x —'}
+                  </span>
+                  <span className={`text-xs sm:text-sm font-medium truncate flex-1 ${match.winnerId === match.awayTeamId ? 'text-primary font-bold' : ''}`}>
+                    {getTeamName(match.awayTeamId)}
+                  </span>
+                </div>
+              );
+
+              const HalfHeader = ({ text, date }: { text: string; date: string }) => (
+                <div className="flex items-center gap-2 my-2">
+                  <div className="h-[2px] flex-1 bg-primary/40 rounded-full" />
+                  <span className="text-xs font-semibold text-foreground whitespace-nowrap px-1">
+                    {text}{date && <span className="text-muted-foreground font-normal"> · {fmt(date)}</span>}
+                  </span>
+                  <div className="h-[2px] flex-1 bg-primary/40 rounded-full" />
+                </div>
+              );
+
               return (
                 <Card key={phase} className="bg-gradient-card border-border/50">
-                  <CardHeader><CardTitle className="flex items-center gap-2"><Swords className="h-5 w-5 text-primary" />{PHASE_LABELS[phase]}</CardTitle></CardHeader>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 flex-wrap">
+                      <Swords className="h-5 w-5 text-primary" />
+                      {label}
+                      {!showTwoHalves && date1 && (
+                        <span className="text-xs font-normal text-muted-foreground ml-2 inline-flex items-center gap-1">
+                          <Calendar className="h-3 w-3" /> {fmt(date1)}
+                        </span>
+                      )}
+                    </CardTitle>
+                  </CardHeader>
                   <CardContent className="space-y-3">
-                    {(() => {
-                      const half = Math.ceil(phaseMatches.length / 2);
-                      const showSeparator = phaseMatches.length > 1;
-                      const renderMatch = (match: KnockoutMatch) => (
-                        <div key={match.id} className="flex items-center justify-between p-2 sm:p-3 rounded-lg bg-muted/30 border border-border/30">
-                          <span className={`text-xs sm:text-sm font-medium truncate flex-1 text-right ${match.winnerId === match.homeTeamId ? 'text-primary font-bold' : ''}`}>
-                            {getTeamName(match.homeTeamId)}
-                          </span>
-                          <span className="mx-2 sm:mx-3 text-xs sm:text-sm font-bold text-primary min-w-[40px] sm:min-w-[50px] text-center whitespace-nowrap">
-                            {match.homeGoals !== null ? `${match.homeGoals} x ${match.awayGoals}` : '— x —'}
-                          </span>
-                          <span className={`text-xs sm:text-sm font-medium truncate flex-1 ${match.winnerId === match.awayTeamId ? 'text-primary font-bold' : ''}`}>
-                            {getTeamName(match.awayTeamId)}
-                          </span>
-                        </div>
-                      );
-                      return (
-                        <>
-                          {phaseMatches.slice(0, half).map(renderMatch)}
-                          {showSeparator && (
-                            <div className="my-1">
-                              <div className="h-[2px] bg-primary/40 rounded-full" />
-                            </div>
-                          )}
-                          {phaseMatches.slice(half).map(renderMatch)}
-                        </>
-                      );
-                    })()}
+                    {showTwoHalves && <HalfHeader text={`${label} 1`} date={date1} />}
+                    {phaseMatches.slice(0, half).map(renderMatch)}
+                    {showTwoHalves && <HalfHeader text={`${label} 2`} date={date2} />}
+                    {phaseMatches.slice(half).map(renderMatch)}
                   </CardContent>
                 </Card>
               );

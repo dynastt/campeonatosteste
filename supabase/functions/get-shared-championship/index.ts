@@ -85,6 +85,23 @@ Deno.serve(async (req) => {
       teams = teamsData || []
     }
 
+    // Fetch active announcement for this viewer:
+    // - per-championship announcement (priority), or owner's global announcement.
+    // - filter out expired ones.
+    const ownerId = champRes.data.user_id
+    const nowIso = new Date().toISOString()
+    const { data: announcementsData } = await supabase
+      .from('public_announcements')
+      .select('*')
+      .eq('user_id', ownerId)
+      .or(`championship_id.eq.${champId},is_global.eq.true`)
+
+    let announcement: any = null
+    const valid = (announcementsData || []).filter((a: any) => !a.expires_at || a.expires_at > nowIso)
+    const perChamp = valid.find((a: any) => a.championship_id === champId)
+    const global = valid.find((a: any) => a.is_global)
+    announcement = perChamp || global || null
+
     return new Response(JSON.stringify({
       championship: champRes.data,
       teams,
@@ -92,6 +109,7 @@ Deno.serve(async (req) => {
       rounds: roundsRes.data || [],
       gameDays: gameDaysRes.data || [],
       knockoutMatches: knockoutRes.data || [],
+      announcement,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })

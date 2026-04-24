@@ -18,6 +18,9 @@ export interface Championship {
   gameDayNames?: string[];
   qualifyingTeams?: Record<string, number>;
   logo?: string;
+  sponsors?: string[];
+  /** Datas por metade de fase eliminatória. Chave: `${phase}-1` ou `${phase}-2`. Valor: 'YYYY-MM-DD'. */
+  knockoutPhaseDates?: Record<string, string>;
   deletedAt?: string;
   createdAt: string;
 }
@@ -68,7 +71,21 @@ export interface KnockoutMatch {
   homeWO: boolean;
   awayWO: boolean;
   winnerId: string | null;
+  matchTime?: string;
   createdAt: string;
+}
+
+export interface Announcement {
+  id: string;
+  userId: string;
+  championshipId: string | null;
+  title: string;
+  description?: string;
+  imageUrl?: string;
+  expiresAt?: string;
+  isGlobal: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface TeamStats {

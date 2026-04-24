@@ -15,6 +15,9 @@ import RoundsList from '@/components/championship/RoundsList';
 import AddTeamDialog from '@/components/championship/AddTeamDialog';
 import KnockoutBracket from '@/components/championship/KnockoutBracket';
 import GameDayManager from '@/components/championship/GameDayManager';
+import SponsorsBar from '@/components/championship/SponsorsBar';
+import SponsorsManager from '@/components/championship/SponsorsManager';
+import AnnouncementManager from '@/components/championship/AnnouncementManager';
 import { toast } from 'sonner';
 
 const PHASE_LABELS: Record<string, string> = {
@@ -120,6 +123,11 @@ const ChampionshipDetail = () => {
     createKnockoutMatch,
     updateKnockoutMatch,
     deleteKnockoutMatch,
+    updateChampionship,
+    getGlobalAnnouncement,
+    getChampionshipAnnouncement,
+    upsertAnnouncement,
+    deleteAnnouncement,
   } = useChampionships();
 
   const [isAddTeamOpen, setIsAddTeamOpen] = useState(false);
@@ -199,6 +207,9 @@ const ChampionshipDetail = () => {
 
   return (
     <div className="min-h-screen bg-gradient-hero">
+      {/* Patrocinadores */}
+      <SponsorsBar sponsors={championship.sponsors} />
+
       {/* Header */}
       <header className="border-b bg-card/80 backdrop-blur-xl sticky top-0 z-50 shadow-sm">
         <div className="container mx-auto px-4 py-4 sm:py-6">
@@ -343,9 +354,25 @@ const ChampionshipDetail = () => {
                     Gerenciar Eliminatórias
                   </Button>
                   <ShareLinkButton championshipId={championship.id} userId={user?.id} />
+                  <div className="pt-1 flex justify-end">
+                    <AnnouncementManager
+                      championshipId={championship.id}
+                      championshipName={championship.name}
+                      championshipAnnouncement={getChampionshipAnnouncement(championship.id)}
+                      globalAnnouncement={getGlobalAnnouncement()}
+                      onSave={upsertAnnouncement}
+                      onDelete={deleteAnnouncement}
+                    />
+                  </div>
                 </CardContent>
               </Card>
             </div>
+
+            <SponsorsManager
+              championshipId={championship.id}
+              sponsors={championship.sponsors || []}
+              onChange={(next) => updateChampionship(championship.id, { sponsors: next })}
+            />
 
             <Card className="bg-gradient-card border-border/50">
               <CardHeader>
@@ -427,6 +454,8 @@ const ChampionshipDetail = () => {
               championshipId={championship.id}
               enabledPhases={championship.knockoutPhases || ['round-of-16', 'quarter-finals', 'semi-finals', 'final']}
               allRegularMatches={allRegularMatches}
+              knockoutPhaseDates={championship.knockoutPhaseDates}
+              onUpdatePhaseDates={(next) => updateChampionship(championship.id, { knockoutPhaseDates: next })}
               onCreateMatch={createKnockoutMatch}
               onUpdateMatch={updateKnockoutMatch}
               onDeleteMatch={deleteKnockoutMatch}

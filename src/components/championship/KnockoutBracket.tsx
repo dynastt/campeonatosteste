@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Edit2, Trophy, AlertTriangle, Swords, Trash2 } from 'lucide-react';
+import { Plus, Edit2, Trophy, AlertTriangle, Swords, Trash2, Calendar, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface KnockoutBracketProps {
@@ -18,6 +18,8 @@ interface KnockoutBracketProps {
   championshipId: string;
   enabledPhases: KnockoutPhase[];
   allRegularMatches: Match[]; // game day + general round matches
+  knockoutPhaseDates?: Record<string, string>;
+  onUpdatePhaseDates?: (next: Record<string, string>) => void;
   onCreateMatch: (data: Omit<KnockoutMatch, 'id' | 'createdAt'>) => void;
   onUpdateMatch: (id: string, data: Partial<KnockoutMatch>) => void;
   onDeleteMatch: (id: string) => void;
@@ -36,6 +38,8 @@ const KnockoutBracket = ({
   championshipId,
   enabledPhases,
   allRegularMatches,
+  knockoutPhaseDates,
+  onUpdatePhaseDates,
   onCreateMatch,
   onUpdateMatch,
   onDeleteMatch,
@@ -52,6 +56,7 @@ const KnockoutBracket = ({
     awayGoals: null as number | null,
     homeWO: false,
     awayWO: false,
+    matchTime: '',
   });
 
   const phases = useMemo(() => {
@@ -66,7 +71,7 @@ const KnockoutBracket = ({
   const openCreateDialog = (phase: KnockoutPhase, position: number) => {
     setSelectedPhase(phase);
     setSelectedPosition(position);
-    setFormData({ homeTeamId: '', awayTeamId: '', homeGoals: null, awayGoals: null, homeWO: false, awayWO: false });
+    setFormData({ homeTeamId: '', awayTeamId: '', homeGoals: null, awayGoals: null, homeWO: false, awayWO: false, matchTime: '' });
     setEditingMatch(null);
     setIsDialogOpen(true);
   };
@@ -81,6 +86,7 @@ const KnockoutBracket = ({
       awayGoals: match.awayGoals,
       homeWO: match.homeWO,
       awayWO: match.awayWO,
+      matchTime: match.matchTime || '',
     });
     setEditingMatch(match);
     setIsDialogOpen(true);
@@ -108,6 +114,7 @@ const KnockoutBracket = ({
         homeGoals: formData.homeWO || formData.awayWO ? null : formData.homeGoals,
         awayGoals: formData.homeWO || formData.awayWO ? null : formData.awayGoals,
         homeWO: formData.homeWO, awayWO: formData.awayWO, winnerId,
+        matchTime: formData.matchTime || undefined,
       });
       toast.success('Partida atualizada!');
     } else {
@@ -117,6 +124,7 @@ const KnockoutBracket = ({
         homeGoals: formData.homeWO || formData.awayWO ? null : formData.homeGoals,
         awayGoals: formData.homeWO || formData.awayWO ? null : formData.awayGoals,
         homeWO: formData.homeWO, awayWO: formData.awayWO, winnerId,
+        matchTime: formData.matchTime || undefined,
       });
       toast.success('Partida criada!');
     }
@@ -171,7 +179,16 @@ const KnockoutBracket = ({
           </Button>
         </div>
 
-        <div className="space-y-2 mt-4">
+        <div className="flex items-center gap-2 mt-1 text-[11px] text-muted-foreground font-medium">
+          <span>Jogo {position}</span>
+          {match.matchTime && (
+            <span className="inline-flex items-center gap-1 bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+              <Clock className="h-3 w-3" /> {match.matchTime}
+            </span>
+          )}
+        </div>
+
+        <div className="space-y-2 mt-2">
           <div className={`flex items-center justify-between text-sm ${match.winnerId === match.homeTeamId ? 'font-bold text-primary' : ''}`}>
             <div className="flex items-center gap-2 flex-1 min-w-0">
               {homeTeam?.logo ? (
@@ -400,11 +417,51 @@ const KnockoutBracket = ({
         {phases.map((phase) => {
           const phaseMatches = getPhaseMatches(phase.key);
           const count = phase.doubledCount;
+          const half = Math.ceil(count / 2);
+          const showTwoHalves = count > 1;
+          const dateKey1 = `${phase.key}-1`;
+          const dateKey2 = `${phase.key}-2`;
+          const date1 = knockoutPhaseDates?.[dateKey1] || '';
+          const date2 = knockoutPhaseDates?.[dateKey2] || '';
+
+          const updateDate = (key: string, value: string) => {
+            if (!onUpdatePhaseDates) return;
+            const next = { ...(knockoutPhaseDates || {}) };
+            if (value) next[key] = value;
+            else delete next[key];
+            onUpdatePhaseDates(next);
+          };
+
+          const formatDate = (iso: string) =>
+            iso ? (() => { const [y, mo, d] = iso.split('-'); return `${d}/${mo}/${y}`; })() : '';
+
+          const HalfHeader = ({ label, dateKey, date }: { label: string; dateKey: string; date: string }) => (
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 my-2">
+              <div className="flex items-center gap-2 flex-1">
+                <div className="h-[2px] flex-1 bg-primary/40 rounded-full" />
+                <span className="text-xs font-semibold text-foreground whitespace-nowrap px-1">
+                  {label}
+                </span>
+                <div className="h-[2px] flex-1 bg-primary/40 rounded-full" />
+              </div>
+              {onUpdatePhaseDates && (
+                <div className="flex items-center gap-1.5 text-xs">
+                  <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    type="date"
+                    value={date}
+                    onChange={(e) => updateDate(dateKey, e.target.value)}
+                    className="h-7 w-[150px] text-xs"
+                  />
+                </div>
+              )}
+            </div>
+          );
 
           return (
             <Card key={phase.key} className="bg-gradient-card border-border/50">
               <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center gap-2">
+                <CardTitle className="text-lg flex items-center gap-2 flex-wrap">
                   {phase.key === 'final' ? (
                     <Trophy className="h-5 w-5 text-accent" />
                   ) : (
@@ -414,12 +471,26 @@ const KnockoutBracket = ({
                   <span className="text-sm font-normal text-muted-foreground ml-2">
                     ({count} {count === 1 ? 'jogo' : 'jogos'})
                   </span>
+                  {!showTwoHalves && date1 && (
+                    <span className="text-xs font-normal text-muted-foreground ml-2 inline-flex items-center gap-1">
+                      <Calendar className="h-3 w-3" /> {formatDate(date1)}
+                    </span>
+                  )}
                 </CardTitle>
+                {!showTwoHalves && onUpdatePhaseDates && (
+                  <div className="flex items-center gap-1.5 text-xs mt-2">
+                    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      type="date"
+                      value={date1}
+                      onChange={(e) => updateDate(dateKey1, e.target.value)}
+                      className="h-7 w-[150px] text-xs"
+                    />
+                  </div>
+                )}
               </CardHeader>
               <CardContent>
                 {(() => {
-                  const half = Math.ceil(count / 2);
-                  const showSeparator = count > 1;
                   const gridClass = count === 1 ? 'grid-cols-1 max-w-md mx-auto' :
                     count <= 4 ? 'grid-cols-1 sm:grid-cols-2 max-w-2xl mx-auto' :
                     count <= 8 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4' :
@@ -427,6 +498,9 @@ const KnockoutBracket = ({
 
                   return (
                     <div className="space-y-4">
+                      {showTwoHalves && (
+                        <HalfHeader label={`${phase.label} 1`} dateKey={dateKey1} date={date1} />
+                      )}
                       <div className={`grid gap-3 ${gridClass}`}>
                         {Array.from({ length: half }, (_, i) => {
                           const match = phaseMatches.find(m => m.position === i + 1);
@@ -437,11 +511,9 @@ const KnockoutBracket = ({
                           );
                         })}
                       </div>
-                      {showSeparator && (
+                      {showTwoHalves && (
                         <>
-                        <div className="my-1">
-                          <div className="h-[2px] bg-primary/40 rounded-full" />
-                        </div>
+                          <HalfHeader label={`${phase.label} 2`} dateKey={dateKey2} date={date2} />
                           <div className={`grid gap-3 ${gridClass}`}>
                             {Array.from({ length: count - half }, (_, i) => {
                               const pos = half + i + 1;
@@ -516,6 +588,15 @@ const KnockoutBracket = ({
                   onChange={(e) => setFormData(prev => ({ ...prev, awayGoals: e.target.value === '' ? null : parseInt(e.target.value) }))}
                   disabled={formData.homeWO || formData.awayWO} className="h-11" />
               </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="ko-time" className="flex items-center gap-1.5">
+                <Clock className="h-3.5 w-3.5" /> Horário do jogo (opcional)
+              </Label>
+              <Input id="ko-time" type="time" value={formData.matchTime}
+                onChange={(e) => setFormData(prev => ({ ...prev, matchTime: e.target.value }))}
+                className="h-11" />
             </div>
 
             <div className="border rounded-xl p-4 space-y-3 bg-muted/30">

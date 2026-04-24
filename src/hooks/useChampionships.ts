@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Championship, Team, Match, Round, GameDay, KnockoutMatch, KnockoutPhase } from '@/types/championship';
+import { Championship, Team, Match, Round, GameDay, KnockoutMatch, KnockoutPhase, Announcement } from '@/types/championship';
 import { useAuth } from './useAuth';
 import { createTeamSchema, createChampionshipSchema, updateMatchSchema, teamNameSchema, logoUrlSchema, championshipNameSchema, descriptionSchema, goalsSchema, gameDayNameSchema, validateOrThrow } from '@/utils/validation';
 import { z } from 'zod';
@@ -17,6 +17,8 @@ function mapChampionship(row: any): Championship {
     gameDayNames: row.game_day_names || [],
     qualifyingTeams: row.qualifying_teams || {},
     logo: row.logo || undefined,
+    sponsors: row.sponsors || [],
+    knockoutPhaseDates: row.knockout_phase_dates || {},
     deletedAt: row.deleted_at || undefined,
     createdAt: row.created_at,
   };
@@ -58,7 +60,23 @@ function mapKnockoutMatch(row: any): KnockoutMatch {
     position: row.position, homeTeamId: row.home_team_id, awayTeamId: row.away_team_id,
     homeGoals: row.home_goals, awayGoals: row.away_goals,
     homeWO: row.home_wo, awayWO: row.away_wo,
-    winnerId: row.winner_id, createdAt: row.created_at,
+    winnerId: row.winner_id, matchTime: row.match_time || undefined,
+    createdAt: row.created_at,
+  };
+}
+
+function mapAnnouncement(row: any): Announcement {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    championshipId: row.championship_id || null,
+    title: row.title,
+    description: row.description || undefined,
+    imageUrl: row.image_url || undefined,
+    expiresAt: row.expires_at || undefined,
+    isGlobal: !!row.is_global,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 }
 
@@ -143,6 +161,8 @@ export function useChampionships() {
     if (data.gameDayNames !== undefined) updateData.game_day_names = data.gameDayNames;
     if (data.qualifyingTeams !== undefined) updateData.qualifying_teams = data.qualifyingTeams;
     if (data.logo !== undefined) updateData.logo = data.logo || null;
+    if (data.sponsors !== undefined) updateData.sponsors = data.sponsors || [];
+    if (data.knockoutPhaseDates !== undefined) updateData.knockout_phase_dates = data.knockoutPhaseDates || {};
     await supabase.from('championships').update(updateData).eq('id', id);
     setChampionships(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
     broadcastUpdate(id);
@@ -416,12 +436,14 @@ export function useChampionships() {
       home_goals: data.homeGoals, away_goals: data.awayGoals,
       home_wo: data.homeWO, away_wo: data.awayWO,
       winner_id: data.winnerId,
+      match_time: data.matchTime || null,
     }).select().single();
     if (error || !row) return null;
     const mapped = mapKnockoutMatch(row);
     setKnockoutMatches(prev => [...prev, mapped]);
+    broadcastUpdate(data.championshipId);
     return mapped;
-  }, [user]);
+  }, [user, broadcastUpdate]);
 
   const updateKnockoutMatch = useCallback(async (id: string, data: Partial<KnockoutMatch>) => {
     const updateData: any = {};
@@ -432,6 +454,7 @@ export function useChampionships() {
     if (data.homeWO !== undefined) updateData.home_wo = data.homeWO;
     if (data.awayWO !== undefined) updateData.away_wo = data.awayWO;
     if (data.winnerId !== undefined) updateData.winner_id = data.winnerId;
+    if (data.matchTime !== undefined) updateData.match_time = data.matchTime || null;
     await supabase.from('knockout_matches').update(updateData).eq('id', id);
     setKnockoutMatches(prev => prev.map(m => m.id === id ? { ...m, ...data } : m));
     const km = knockoutMatches.find(m => m.id === id);
@@ -439,13 +462,79 @@ export function useChampionships() {
   }, [knockoutMatches, broadcastUpdate]);
 
   const deleteKnockoutMatch = useCallback(async (id: string) => {
+    const km = knockoutMatches.find(m => m.id === id);
     await supabase.from('knockout_matches').delete().eq('id', id);
     setKnockoutMatches(prev => prev.filter(m => m.id !== id));
-  }, []);
+    if (km) broadcastUpdate(km.championshipId);
+  }, [knockoutMatches, broadcastUpdate]);
 
   const getChampionshipKnockoutMatches = useCallback((championshipId: string) => {
     return knockoutMatches.filter(m => m.championshipId === championshipId);
   }, [knockoutMatches]);
+
+  // Announcements
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  useEffect(() => {
+    if (!user) { setAnnouncements([]); return; }
+    supabase.from('public_announcements').select('*').eq('user_id', user.id)
+      .then(({ data }) => { if (data) setAnnouncements(data.map(mapAnnouncement)); });
+  }, [user]);
+
+  const upsertAnnouncement = useCallback(async (data: {
+    id?: string;
+    championshipId: string | null;
+    title: string;
+    description?: string;
+    imageUrl?: string;
+    expiresAt?: string;
+    isGlobal: boolean;
+  }) => {
+    if (!user) return null;
+    // For global, ensure only one exists per user (replace via delete+insert).
+    if (data.isGlobal && !data.id) {
+      await supabase.from('public_announcements').delete().eq('user_id', user.id).eq('is_global', true);
+    }
+    const payload: any = {
+      user_id: user.id,
+      championship_id: data.isGlobal ? null : data.championshipId,
+      title: data.title,
+      description: data.description || null,
+      image_url: data.imageUrl || null,
+      expires_at: data.expiresAt || null,
+      is_global: data.isGlobal,
+    };
+    let row;
+    if (data.id) {
+      const res = await supabase.from('public_announcements').update(payload).eq('id', data.id).select().single();
+      row = res.data;
+    } else {
+      const res = await supabase.from('public_announcements').insert(payload).select().single();
+      row = res.data;
+    }
+    if (!row) return null;
+    const mapped = mapAnnouncement(row);
+    setAnnouncements(prev => {
+      const filtered = prev.filter(a => a.id !== mapped.id && !(mapped.isGlobal && a.isGlobal));
+      return [...filtered, mapped];
+    });
+    if (data.championshipId) broadcastUpdate(data.championshipId);
+    return mapped;
+  }, [user, broadcastUpdate]);
+
+  const deleteAnnouncement = useCallback(async (id: string) => {
+    const ann = announcements.find(a => a.id === id);
+    await supabase.from('public_announcements').delete().eq('id', id);
+    setAnnouncements(prev => prev.filter(a => a.id !== id));
+    if (ann?.championshipId) broadcastUpdate(ann.championshipId);
+  }, [announcements, broadcastUpdate]);
+
+  const getGlobalAnnouncement = useCallback(() => {
+    return announcements.find(a => a.isGlobal) || null;
+  }, [announcements]);
+
+  const getChampionshipAnnouncement = useCallback((championshipId: string) => {
+    return announcements.find(a => a.championshipId === championshipId) || null;
+  }, [announcements]);
 
   return {
     championships, teams, matches, rounds, gameDays, knockoutMatches,
@@ -457,5 +546,6 @@ export function useChampionships() {
     createRound, updateRound, deleteRound, getChampionshipRounds,
     createMatch, updateMatch, deleteMatch, getChampionshipMatches, getRoundMatches,
     createKnockoutMatch, updateKnockoutMatch, deleteKnockoutMatch, getChampionshipKnockoutMatches,
+    announcements, upsertAnnouncement, deleteAnnouncement, getGlobalAnnouncement, getChampionshipAnnouncement,
   };
 }
