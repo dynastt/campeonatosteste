@@ -535,6 +535,15 @@ const KnockoutBracket = ({
               </div>
             </div>
 
+            <div className="grid gap-2">
+              <Label htmlFor="ko-time" className="flex items-center gap-1.5">
+                <Clock className="h-3.5 w-3.5" /> Horário do jogo (opcional)
+              </Label>
+              <Input id="ko-time" type="time" value={formData.matchTime}
+                onChange={(e) => setFormData(prev => ({ ...prev, matchTime: e.target.value }))}
+                className="h-11" />
+            </div>
+
             <div className="border rounded-xl p-4 space-y-3 bg-muted/30">
               <p className="text-sm font-medium">W.O. (Walk Over)</p>
               <div className="grid grid-cols-2 gap-4">
