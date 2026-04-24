@@ -161,6 +161,8 @@ export function useChampionships() {
     if (data.gameDayNames !== undefined) updateData.game_day_names = data.gameDayNames;
     if (data.qualifyingTeams !== undefined) updateData.qualifying_teams = data.qualifyingTeams;
     if (data.logo !== undefined) updateData.logo = data.logo || null;
+    if (data.sponsors !== undefined) updateData.sponsors = data.sponsors || [];
+    if (data.knockoutPhaseDates !== undefined) updateData.knockout_phase_dates = data.knockoutPhaseDates || {};
     await supabase.from('championships').update(updateData).eq('id', id);
     setChampionships(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
     broadcastUpdate(id);
