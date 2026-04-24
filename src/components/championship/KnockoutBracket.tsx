@@ -71,7 +71,7 @@ const KnockoutBracket = ({
   const openCreateDialog = (phase: KnockoutPhase, position: number) => {
     setSelectedPhase(phase);
     setSelectedPosition(position);
-    setFormData({ homeTeamId: '', awayTeamId: '', homeGoals: null, awayGoals: null, homeWO: false, awayWO: false });
+    setFormData({ homeTeamId: '', awayTeamId: '', homeGoals: null, awayGoals: null, homeWO: false, awayWO: false, matchTime: '' });
     setEditingMatch(null);
     setIsDialogOpen(true);
   };
@@ -86,6 +86,7 @@ const KnockoutBracket = ({
       awayGoals: match.awayGoals,
       homeWO: match.homeWO,
       awayWO: match.awayWO,
+      matchTime: match.matchTime || '',
     });
     setEditingMatch(match);
     setIsDialogOpen(true);
