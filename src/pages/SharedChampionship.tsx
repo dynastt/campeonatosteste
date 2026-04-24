@@ -277,6 +277,8 @@ const SharedChampionship = () => {
 
   return (
     <div className="min-h-screen bg-gradient-hero">
+      <AnnouncementPopup announcement={announcement} />
+      <SponsorsBar sponsors={championship.sponsors} />
       <header className="border-b bg-card/80 backdrop-blur-xl sticky top-0 z-50 shadow-sm">
         <div className="container mx-auto px-4 py-4 sm:py-6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
