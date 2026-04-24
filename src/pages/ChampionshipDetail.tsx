@@ -454,6 +454,8 @@ const ChampionshipDetail = () => {
               championshipId={championship.id}
               enabledPhases={championship.knockoutPhases || ['round-of-16', 'quarter-finals', 'semi-finals', 'final']}
               allRegularMatches={allRegularMatches}
+              knockoutPhaseDates={championship.knockoutPhaseDates}
+              onUpdatePhaseDates={(next) => updateChampionship(championship.id, { knockoutPhaseDates: next })}
               onCreateMatch={createKnockoutMatch}
               onUpdateMatch={updateKnockoutMatch}
               onDeleteMatch={deleteKnockoutMatch}
