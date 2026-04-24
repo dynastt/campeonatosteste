@@ -472,6 +472,70 @@ export function useChampionships() {
     return knockoutMatches.filter(m => m.championshipId === championshipId);
   }, [knockoutMatches]);
 
+  // Announcements
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  useEffect(() => {
+    if (!user) { setAnnouncements([]); return; }
+    supabase.from('public_announcements').select('*').eq('user_id', user.id)
+      .then(({ data }) => { if (data) setAnnouncements(data.map(mapAnnouncement)); });
+  }, [user]);
+
+  const upsertAnnouncement = useCallback(async (data: {
+    id?: string;
+    championshipId: string | null;
+    title: string;
+    description?: string;
+    imageUrl?: string;
+    expiresAt?: string;
+    isGlobal: boolean;
+  }) => {
+    if (!user) return null;
+    // For global, ensure only one exists per user (replace via delete+insert).
+    if (data.isGlobal && !data.id) {
+      await supabase.from('public_announcements').delete().eq('user_id', user.id).eq('is_global', true);
+    }
+    const payload: any = {
+      user_id: user.id,
+      championship_id: data.isGlobal ? null : data.championshipId,
+      title: data.title,
+      description: data.description || null,
+      image_url: data.imageUrl || null,
+      expires_at: data.expiresAt || null,
+      is_global: data.isGlobal,
+    };
+    let row;
+    if (data.id) {
+      const res = await supabase.from('public_announcements').update(payload).eq('id', data.id).select().single();
+      row = res.data;
+    } else {
+      const res = await supabase.from('public_announcements').insert(payload).select().single();
+      row = res.data;
+    }
+    if (!row) return null;
+    const mapped = mapAnnouncement(row);
+    setAnnouncements(prev => {
+      const filtered = prev.filter(a => a.id !== mapped.id && !(mapped.isGlobal && a.isGlobal));
+      return [...filtered, mapped];
+    });
+    if (data.championshipId) broadcastUpdate(data.championshipId);
+    return mapped;
+  }, [user, broadcastUpdate]);
+
+  const deleteAnnouncement = useCallback(async (id: string) => {
+    const ann = announcements.find(a => a.id === id);
+    await supabase.from('public_announcements').delete().eq('id', id);
+    setAnnouncements(prev => prev.filter(a => a.id !== id));
+    if (ann?.championshipId) broadcastUpdate(ann.championshipId);
+  }, [announcements, broadcastUpdate]);
+
+  const getGlobalAnnouncement = useCallback(() => {
+    return announcements.find(a => a.isGlobal) || null;
+  }, [announcements]);
+
+  const getChampionshipAnnouncement = useCallback((championshipId: string) => {
+    return announcements.find(a => a.championshipId === championshipId) || null;
+  }, [announcements]);
+
   return {
     championships, teams, matches, rounds, gameDays, knockoutMatches,
     createChampionship, updateChampionship, deleteChampionship, restoreChampionship, permanentDeleteChampionship, getChampionship,
@@ -482,5 +546,6 @@ export function useChampionships() {
     createRound, updateRound, deleteRound, getChampionshipRounds,
     createMatch, updateMatch, deleteMatch, getChampionshipMatches, getRoundMatches,
     createKnockoutMatch, updateKnockoutMatch, deleteKnockoutMatch, getChampionshipKnockoutMatches,
+    announcements, upsertAnnouncement, deleteAnnouncement, getGlobalAnnouncement, getChampionshipAnnouncement,
   };
 }
