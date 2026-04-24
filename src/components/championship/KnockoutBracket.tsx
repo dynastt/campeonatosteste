@@ -114,6 +114,7 @@ const KnockoutBracket = ({
         homeGoals: formData.homeWO || formData.awayWO ? null : formData.homeGoals,
         awayGoals: formData.homeWO || formData.awayWO ? null : formData.awayGoals,
         homeWO: formData.homeWO, awayWO: formData.awayWO, winnerId,
+        matchTime: formData.matchTime || undefined,
       });
       toast.success('Partida atualizada!');
     } else {
@@ -123,6 +124,7 @@ const KnockoutBracket = ({
         homeGoals: formData.homeWO || formData.awayWO ? null : formData.homeGoals,
         awayGoals: formData.homeWO || formData.awayWO ? null : formData.awayGoals,
         homeWO: formData.homeWO, awayWO: formData.awayWO, winnerId,
+        matchTime: formData.matchTime || undefined,
       });
       toast.success('Partida criada!');
     }
