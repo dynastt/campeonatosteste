@@ -69,6 +69,8 @@ const SharedChampionship = () => {
   const [gameDays, setGameDays] = useState<GameDay[]>([]);
   const [knockoutMatches, setKnockoutMatches] = useState<KnockoutMatch[]>([]);
   const [activeTab, setActiveTab] = useState('overview');
+  const [tabInitialized, setTabInitialized] = useState(false);
+  const [announcement, setAnnouncement] = useState<any>(null);
   const [activeGameDay, setActiveGameDay] = useState('');
   const [standingsMode, setStandingsMode] = useState<string>('points');
   const [gameDayStandingsMode, setGameDayStandingsMode] = useState<Record<string, string>>({});
@@ -93,6 +95,7 @@ const SharedChampionship = () => {
       setRounds(data.rounds.map(mapRound));
       setGameDays(data.gameDays.map(mapGameDay));
       setKnockoutMatches(data.knockoutMatches.map(mapKnockoutMatch));
+      setAnnouncement(data.announcement || null);
       setError(null);
     } catch {
       setError('Erro de conexão');
